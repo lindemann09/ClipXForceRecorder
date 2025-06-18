@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+.vscode/
+*.txt
+*.csv
+clipx_force_recorder
+

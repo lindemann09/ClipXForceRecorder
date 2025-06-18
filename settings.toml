@@ -1,0 +1,10 @@
+# ClipX settings
+ip = "192.168.178.74"
+fifo_size = 50
+recording_delay = 1
+
+# streaming settings
+# set to zero or "" to disable
+output_file = "output.csv"
+display = 1
+lsl = 0
