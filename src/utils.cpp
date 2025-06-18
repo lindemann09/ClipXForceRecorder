@@ -48,6 +48,15 @@ using namespace std;
     }
 #endif
 
+char check_kb() {
+    if (kbhit()) {
+        char rtn = getchar();
+        if (rtn == 27) rtn = 'q';
+        return rtn;
+    }
+    return 0;
+};
+
 
 double seconds_since_epoch(){
 	auto now = chrono::high_resolution_clock::now();

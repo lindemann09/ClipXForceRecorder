@@ -5,6 +5,7 @@
 
 int kbhit();
 double seconds_since_epoch();
+char check_kb();
 
 
 class DataFile {

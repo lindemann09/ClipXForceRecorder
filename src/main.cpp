@@ -4,14 +4,16 @@
 #include <string>
 #include <lsl_cpp.h>
 
-#include "toml.hpp"
 #include "ClipX.h"
 #include "utils.h"
+#include "settings.h"
 
 using namespace std;
 
 const int MAX_DATA_LINE = 200;
-const int lsl_nchannels = 3;
+const int LSL_NCHANNELS = 3;
+const int SAMPLING_RATE =1000;
+
 
 ClipX StartClipX(const string &ip, const int buffer_size)
 {
@@ -44,7 +46,7 @@ void record_clipx(ClipX &dev, const double time_sync,
 {
 	bool paused = false;
 	double values[7];
-	double lsl_sample[lsl_nchannels];
+	double lsl_sample[LSL_NCHANNELS];
 	int chunk_cnt;
 	double t;
 	char data_line[MAX_DATA_LINE];
@@ -82,52 +84,40 @@ void record_clipx(ClipX &dev, const double time_sync,
 			} //
  		} // while available lines
 
-		if (kbhit())
+		ch = check_kb();
+		if (ch == 'q')
 		{
-			ch = getchar();
-			if (ch == 27 or ch == 'q')
-			{
-				printf("Exiting...");
-				break;
-			}
-			else if (ch == 'p')
-			{
-				paused = !paused; // toggle pause state
-				printf("%s\n", (paused ? "Paused." : "Resumed."));
-			}
+			printf("Exiting...");
+			break;
+		}
+		else if (ch == 'p')
+		{
+			paused = !paused; // toggle pause state
+			printf("%s\n", (paused ? "Paused." : "Resumed."));
 		}
 	} // while true
 }
 
-lsl::stream_outlet* make_lsl_outlet(const toml::table &settings) {
-	//FIXME add settings
-	lsl::stream_info info("ForceStream", "force", lsl_nchannels, 1000); //FIXME settings?
-	return new lsl::stream_outlet(info);
-}
 
 int main()
 {
-	// settings
-	toml::table settings = toml::parse_file("settings.toml");
-	string ip_str = settings["ip"].value_or("");
-	int fifo_size = settings["fifo_size"].value_or(50);
-	int recording_delay = settings["recording_delay"].value_or(1);
+	//
+	Settings s = read_settings("settings.toml");
 
-	string flname = settings["output_file"].value_or("");
-	bool display = settings["display"].value_or(1) > 0;
-	bool stream_lsl = settings["lsl"].value_or(1) > 0;
+	DataFile data_file = DataFile(s.flname);
+	ClipX dev = StartClipX(s.ip, s.fifo_size);
 
-	DataFile data_file = DataFile(flname);
-	ClipX dev = StartClipX(ip_str, fifo_size);
-
+	lsl::stream_info lsl_info("ForceStream", "force", LSL_NCHANNELS, SAMPLING_RATE); //FIXME does it initialize a already stream?
 	lsl::stream_outlet* ptr_lsl_outlet = nullptr;
-	if (stream_lsl) ptr_lsl_outlet = make_lsl_outlet(settings);
+	if (s.stream_lsl) {
+		ptr_lsl_outlet = new lsl::stream_outlet(lsl_info);
+	}
 
-	sleep(recording_delay);
+	sleep(s.recording_delay);
 	double time_sync = empty_clipx_buffer(dev);
 
 	printf("Recoding Started\n");
-	record_clipx(dev, time_sync, data_file, ptr_lsl_outlet, display);
+	record_clipx(dev, time_sync, data_file, ptr_lsl_outlet, s.display);
 
 	data_file.close();
 	delete ptr_lsl_outlet;
