@@ -11,3 +11,5 @@ Recording and streaming ClipX Force Sensors for Linux or Windows
 ## License
   - This project is licensed under the MIT License
   - The repository contains code from [toml++ v3.4.](https://github.com/marzer/tomlplusplus)
+
+(c) Oliver Lindemann

@@ -8,3 +8,6 @@ recording_delay = 1
 output_file = "output.csv"
 display = 1
 lsl = 0
+# TODO setting not yet used
+lsl_name = "ClipXForceSensor"
+
