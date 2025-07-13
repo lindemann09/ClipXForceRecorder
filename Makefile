@@ -8,9 +8,11 @@ CFLAGS = -Wall
 TARGET = clipx_force_recorder
 OBJS = src/main.cpp src/utils.o src/settings.o
 
+all:
+	make $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) -l:ClipXLinuxApi.so -llsl
+	$(CC)  $(OBJS) -o $(TARGET) -l:ClipXLinuxApi.so -llsl
 
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $< -o $@

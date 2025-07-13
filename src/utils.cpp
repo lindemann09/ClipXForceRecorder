@@ -10,9 +10,9 @@ using namespace std;
     // Windows implementation
     #include <conio.h>
 
-    int kbhit() {
-        return _kbhit();
-    }
+   //int kbhit() {
+    //    return _kbhit();
+    //}
 
 #else
     // macOS / Linux implementation
