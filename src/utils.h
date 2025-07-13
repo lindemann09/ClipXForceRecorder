@@ -3,7 +3,10 @@
 
 #include <string>
 
-int kbhit();
+#ifndef _WIN32
+    int kbhit();
+#endif
+
 double seconds_since_epoch();
 char check_kb();
 
