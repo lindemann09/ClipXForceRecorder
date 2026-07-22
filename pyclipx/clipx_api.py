@@ -5,6 +5,7 @@ Oliver Lindemann
 
 from ctypes import *
 
+
 # Define the MHandle type (pointer to sClipX)
 class sClipX(Structure):
     _fields_ = [("obj", c_void_p)]
@@ -15,6 +16,52 @@ class ClipXAPI(object):
 
     def __init__(self, dll_path: str = "./ClipXApi.dll"):
         self.clipx_api = WinDLL(dll_path)
+
+        self.clipx_api.ClipX_Connect.argtypes = [c_char_p]
+        self.clipx_api.ClipX_Connect.restype = MHandle
+
+        # ClipX_SDORead
+        self.clipx_api.ClipX_SDORead.argtypes = [MHandle, c_int, c_int, c_char_p, c_int]
+        self.clipx_api.ClipX_SDORead.restype = None
+
+        # ClipX_SDOWrite
+        self.clipx_api.ClipX_SDOWrite.argtypes = [MHandle, c_int, c_int, c_char_p]
+        self.clipx_api.ClipX_SDOWrite.restype = None
+
+        # ClipX_startMeasurement
+        self.clipx_api.ClipX_startMeasurement.argtypes = [MHandle]
+        self.clipx_api.ClipX_startMeasurement.restype = c_int
+
+        # ClipX_AvailableLines
+        self.clipx_api.ClipX_AvailableLines.argtypes = [MHandle]
+        self.clipx_api.ClipX_AvailableLines.restype = c_int
+
+        # ClipX_ReadNextLine
+        self.clipx_api.ClipX_ReadNextLine.argtypes = [MHandle, POINTER(c_double)]
+        self.clipx_api.ClipX_ReadNextLine.restype = c_int
+
+        # ClipX_ReadNextBlock
+        self.clipx_api.ClipX_ReadNextBlock.argtypes = [
+            MHandle, c_int,
+            POINTER(c_double), POINTER(c_double),
+            POINTER(c_double), POINTER(c_double),
+            POINTER(c_double), POINTER(c_double),
+            POINTER(c_double)
+        ]
+        self.clipx_api.ClipX_ReadNextBlock.restype = c_int
+
+        # ClipX_stopMeasurement
+        self.clipx_api.ClipX_stopMeasurement.argtypes = [MHandle]
+        self.clipx_api.ClipX_stopMeasurement.restype = c_int
+
+        # ClipX_Disconnect
+        self.clipx_api.ClipX_Disconnect.argtypes = [MHandle]
+        self.clipx_api.ClipX_Disconnect.restype = None
+
+        # ClipX_isConnected
+        self.clipx_api.ClipX_isConnected.argtypes = [MHandle]
+        self.clipx_api.ClipX_isConnected.restype = c_bool
+
         self.handle = MHandle()
 
     def connect(self, ip_address: str) -> MHandle:
@@ -83,4 +130,4 @@ class ClipXAPI(object):
 
     def is_connected(self) -> bool:
         """Check if the device is connected."""
-        return self.clipx_api.ClipX_isConnected(self.handle)
+        return self.clipx_api.ClipX_isConnected(self.handle)        return self.clipx_api.ClipX_isConnected(self.handle)
