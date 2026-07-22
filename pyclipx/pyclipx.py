@@ -36,14 +36,104 @@ clipx_api.ClipX_stopMeasurement.restype = None
 clipx_api.ClipX_Disconnect.argtypes = [ctypes.c_void_p]
 clipx_api.ClipX_Disconnect.restype = None
 
-# Placeholder for signalSelector and getName (implement as needed)
-def signalSelector(signals, h):
-    # Implement this function based on your ClipXApi requirements
-    pass
+import ctypes
 
-def getName(signal_index):
-    # Implement this function to return the name of the signal
-    return f"Signal_{signal_index}"
+
+def signalSelector(signals, h):
+    """
+    This function sets up the signals for the FIFO storage to be monitored.
+    ClipX must already be connected.
+
+    Args:
+        signals (list): List of signal indices to configure.
+        h (ctypes.c_void_p): Handle to the ClipX connection.
+
+    Returns:
+        int: 1 if successful, -1 if ClipX is not connected.
+    """
+    # Load the ClipXApi library (assuming it's already loaded)
+    clipx_api = ctypes.WinDLL('ClipXApi')
+
+    # Define the function prototypes
+    clipx_api.ClipX_isConnected.argtypes = [ctypes.c_void_p]
+    clipx_api.ClipX_isConnected.restype = ctypes.c_bool
+
+    clipx_api.ClipX_SDOWrite.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_char_p]
+    clipx_api.ClipX_SDOWrite.restype = None
+
+    # Constants
+    idx = 17448
+    sidx1 = 5
+    sidx2 = 7
+
+    # Check if ClipX is connected
+    if not clipx_api.ClipX_isConnected(h):
+        return -1
+
+    # Configure each signal
+    for i in range(6):
+        iin = str(i + 1).encode('utf-8')  # Convert to bytes for c_char_p
+        sin = str(signals[i]).encode('utf-8')  # Convert to bytes for c_char_p
+
+        clipx_api.ClipX_SDOWrite(h, idx, sidx1, iin)
+        clipx_api.ClipX_SDOWrite(h, idx, sidx2, sin)
+
+    return 1
+
+def getName(signalid):
+    signal_names = {
+        0: 'ADC Value',
+        1: 'Filtered ADC Value',
+        2: 'Field Value',
+        3: 'Gross Value',
+        4: 'Net Value',
+        5: 'Min Value',
+        6: 'Max Value',
+        7: 'Peak Peak Value',
+        8: 'Captured Value 1',
+        9: 'Captured Value 2',
+        10: 'ClipX Bus Value 1',
+        11: 'ClipX Bus Value 2',
+        12: 'ClipX Bus Value 3',
+        13: 'ClipX Bus Value 4',
+        14: 'ClipX Bus Value 5',
+        15: 'ClipX Bus Value 6',
+        16: '',
+        17: '',
+        18: '',
+        19: '',
+        20: '',
+        21: 'Calculated Value 1',
+        22: 'Calculated Value 2',
+        23: 'Calculated Value 3',
+        24: 'Calculated Value 4',
+        25: 'Calculated Value 5',
+        26: 'Calculated Value 6',
+        27: 'Ethernet API 1',
+        28: 'Ethernet API 2',
+        29: 'Fieldbus Value 1',
+        30: 'Fieldbus Value 2',
+        31: 'Analog Out Value',
+        32: 'Constant -1',
+        33: 'Constant 0',
+        34: 'Constant 1',
+        35: 'Constant PI/2',
+        36: 'Constant PI',
+        37: 'Constant 2*PI',
+        38: 'User Constant 1',
+        39: 'User Constant 2',
+        40: 'User Constant 3',
+        41: 'User Constant 4',
+        42: 'User Constant 5',
+        43: 'User Constant 6',
+        44: 'User Constant 7',
+        45: 'User Constant 8',
+        46: 'User Constant 9',
+        47: 'User Constant 10'
+    }
+
+    return signal_names.get(signalid, '')
+
 
 # Connect to ClipX
 ip = b'172.21.104.125'  # Note: MATLAB uses a string, Python uses bytes for c_char_p
