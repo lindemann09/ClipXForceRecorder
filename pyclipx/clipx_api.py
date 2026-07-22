@@ -130,4 +130,5 @@ class ClipXAPI(object):
 
     def is_connected(self) -> bool:
         """Check if the device is connected."""
-        return self.clipx_api.ClipX_isConnected(self.handle)        return self.clipx_api.ClipX_isConnected(self.handle)
+        return self.clipx_api.ClipX_isConnected(self.handle)   
+        
