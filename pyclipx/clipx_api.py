@@ -6,16 +6,20 @@ Oliver Lindemann
 from ctypes import *
 
 # Define the MHandle type (pointer to sClipX)
-MHandle = c_void_p
+class sClipX(Structure):
+    _fields_ = [("obj", c_void_p)]
+
+MHandle = POINTER(sClipX)
 
 class ClipXAPI(object):
 
-    def __init__(self, dll_path: str = '.\ClipXApi.dll'):
-        self.clipx_api = CDLL(dll_path)
-        self.handle = None
+    def __init__(self, dll_path: str = "./ClipXApi.dll"):
+        self.clipx_api = WinDLL(dll_path)
+        self.handle = MHandle()
 
     def connect(self, ip_address: str) -> MHandle:
         """Connect to a ClipX device."""
+        print(f"conneting to {ip_address}")
         ip_bytes = ip_address.encode('utf-8')
         self.handle = self.clipx_api.ClipX_Connect(ip_bytes)
         return self.handle
@@ -77,6 +81,6 @@ class ClipXAPI(object):
         """Disconnect from the ClipX device."""
         self.clipx_api.ClipX_Disconnect(handle)
 
-    def is_connected(self, handle: MHandle) -> bool:
+    def is_connected(self) -> bool:
         """Check if the device is connected."""
-        return self.clipx_api.ClipX_isConnected(handle)
+        return self.clipx_api.ClipX_isConnected(self.handle)

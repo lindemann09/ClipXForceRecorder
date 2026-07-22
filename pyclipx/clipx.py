@@ -1,7 +1,10 @@
 from clipx_api import ClipXAPI
-
-ip = '10.144.71.14';
+from time import sleep
+ip = '10.144.71.141'
 clipx = ClipXAPI()
 x = clipx.connect(ip)
-print("x")
+sleep(2)
+print(x)
+print(type(x))
+clipx.is_connected()
 clipx.disconnect(x)
