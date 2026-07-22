@@ -31,6 +31,11 @@
 *.out
 *.app
 
+.venv/
+.DS_Store
+__pycache__/
+
+
 .vscode/
 *.txt
 *.csv
