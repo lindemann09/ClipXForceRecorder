@@ -62,41 +62,38 @@ class ClipXAPI(object):
         self.clipx_api.ClipX_isConnected.argtypes = [MHandle]
         self.clipx_api.ClipX_isConnected.restype = c_bool
 
-        self.handle = MHandle()
+        self.handle = None
 
-    def connect(self, ip_address: str) -> MHandle:
+    def connect(self, ip_address: str):
         """Connect to a ClipX device."""
         print(f"conneting to {ip_address}")
         ip_bytes = ip_address.encode('utf-8')
         self.handle = self.clipx_api.ClipX_Connect(ip_bytes)
-        return self.handle
 
-    def sdo_read(self, handle: MHandle, idx: int, subidx: int, val: bytes, size: int) -> None:
+    def sdo_read(self, idx: int, subidx: int, val: bytes, size: int) -> None:
         """Read from SDO."""
-        self.clipx_api.ClipX_SDORead(handle, idx, subidx, val, size)
+        self.clipx_api.ClipX_SDORead(self.handle, idx, subidx, val, size)
 
-    def sdo_write(self, handle: MHandle, idx: int, subidx: int, val: str) -> None:
+    def sdo_write(self, idx: int, subidx: int, val: str) -> None:
         """Write to SDO."""
         val_bytes = val.encode('utf-8')
-        self.clipx_api.ClipX_SDOWrite(handle, idx, subidx, val_bytes)
+        self.clipx_api.ClipX_SDOWrite(self.handle, idx, subidx, val_bytes)
 
-    def start_measurement(self, handle: MHandle) -> int:
+    def start_measurement(self) -> int:
         """Start measurement."""
-        return self.clipx_api.ClipX_startMeasurement(handle)
+        return self.clipx_api.ClipX_startMeasurement(self.handle)
 
-    def available_lines(self, handle: MHandle) -> int:
+    def available_lines(self) -> int:
         """Get the number of available lines."""
-        return self.clipx_api.ClipX_AvailableLines(handle)
+        return self.clipx_api.ClipX_AvailableLines(self.handle)
 
-    def read_next_line(self, handle: MHandle) -> list:
+    def read_next_line(self) -> list:
         """Read the next line of measurement data."""
         mv_line = (c_double * 1)()  # Adjust size as needed
-        result = self.clipx_api.ClipX_ReadNextLine(handle, mv_line)
+        result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
         return list(mv_line) if result > 0 else []
 
-    def read_next_block(
-        self, handle: MHandle, max_reads: int
-    ) -> tuple:
+    def read_next_block(self, max_reads: int) -> tuple:
         """Read the next block of measurement data."""
         time = (c_double * max_reads)()
         value1 = (c_double * max_reads)()
@@ -107,7 +104,7 @@ class ClipXAPI(object):
         value6 = (c_double * max_reads)()
 
         count = self.clipx_api.ClipX_ReadNextBlock(
-            handle, max_reads,
+            self.handle, max_reads,
             byref(time), byref(value1),
             byref(value2), byref(value3),
             byref(value4), byref(value5),
@@ -120,15 +117,15 @@ class ClipXAPI(object):
             list(value3), list(value4), list(value5), list(value6)
         )
 
-    def stop_measurement(self, handle: MHandle) -> int:
+    def stop_measurement(self) -> int:
         """Stop measurement."""
-        return self.clipx_api.ClipX_stopMeasurement(handle)
+        return self.clipx_api.ClipX_stopMeasurement(self.handle)
 
-    def disconnect(self, handle: MHandle) -> None:
+    def disconnect(self) -> None:
         """Disconnect from the ClipX device."""
-        self.clipx_api.ClipX_Disconnect(handle)
+        self.clipx_api.ClipX_Disconnect(self.handle)
 
     def is_connected(self) -> bool:
         """Check if the device is connected."""
-        return self.clipx_api.ClipX_isConnected(self.handle)   
-        
+        return self.clipx_api.ClipX_isConnected(self.handle)
+
