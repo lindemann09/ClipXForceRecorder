@@ -9,7 +9,7 @@ end
 file = fopen('MeasurementData.csv', 'w');
 
 %Enter the IP address of ClipX
-ip = '172.21.104.125';
+ip = '10.144.71.14';
 h = calllib('ClipXApi', 'ClipX_Connect', ip);
 
 idx = 17448;

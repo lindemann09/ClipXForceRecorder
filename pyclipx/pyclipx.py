@@ -136,8 +136,9 @@ def getName(signalid):
 
 
 # Connect to ClipX
-ip = b'172.21.104.125'  # Note: MATLAB uses a string, Python uses bytes for c_char_p
+ip = b'10.144.71.141'  # Note: MATLAB uses a string, Python uses bytes for c_char_p
 h = clipx_api.ClipX_Connect(ip)
+print(h)
 
 # Set parameters
 idx = 17448

@@ -1,12 +1,12 @@
 %Loading the ClipXApi library. 
 if ~libisloaded('ClipXApi')
    %Enter the path of your ClipXApi here.
-   %addpath('C:\APIfiles')
+   addpath('.\')
    loadlibrary('ClipXApi', 'ClipX_Interface.h');
 end
 
 %Enter the IP address of ClipX
-ip = '172.21.104.125';
+ip = '10.144.71.14';
 h = calllib('ClipXApi', 'ClipX_Connect', ip);
 
 idx = 17448;
@@ -50,7 +50,7 @@ name6 = getName(signals(6));
 %valueptr
 time = libpointer('doublePtr', zeros(1, 200));
 value1 = libpointer('doublePtr', zeros(1, 200));
-value2 = libpointer('doublePtr', zeros(1, 200));
+value2 = libpointer('doublePtr', zeros(1, 200)); 
 value3 = libpointer('doublePtr', zeros(1, 200));
 value4 = libpointer('doublePtr', zeros(1, 200));
 value5 = libpointer('doublePtr', zeros(1, 200));
