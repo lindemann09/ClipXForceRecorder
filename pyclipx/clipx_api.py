@@ -5,6 +5,8 @@ Oliver Lindemann
 
 from ctypes import *
 
+NO_CLIPX_ERROR = "ClipX not connected!"
+
 
 # Define the MHandle type (pointer to sClipX)
 class sClipX(Structure):
@@ -68,33 +70,48 @@ class ClipXAPI(object):
         """Connect to a ClipX device."""
         print(f"conneting to {ip_address}")
         ip_bytes = ip_address.encode('utf-8')
-        self.handle = self.clipx_api.ClipX_Connect(ip_bytes)
-
+        handle = self.clipx_api.ClipX_Connect(ip_bytes)
+        if not handle:
+            raise RuntimeError("failed to connect to deivce.")
+        else:
+            self.handle = handle
     def sdo_read(self, idx: int, subidx: int, val: bytes, size: int) -> None:
         """Read from SDO."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         self.clipx_api.ClipX_SDORead(self.handle, idx, subidx, val, size)
 
     def sdo_write(self, idx: int, subidx: int, val: str) -> None:
         """Write to SDO."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         val_bytes = val.encode('utf-8')
         self.clipx_api.ClipX_SDOWrite(self.handle, idx, subidx, val_bytes)
 
     def start_measurement(self) -> int:
         """Start measurement."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         return self.clipx_api.ClipX_startMeasurement(self.handle)
 
     def available_lines(self) -> int:
         """Get the number of available lines."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         return self.clipx_api.ClipX_AvailableLines(self.handle)
 
     def read_next_line(self) -> list:
         """Read the next line of measurement data."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         mv_line = (c_double * 1)()  # Adjust size as needed
         result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
         return list(mv_line) if result > 0 else []
 
     def read_next_block(self, max_reads: int) -> tuple:
         """Read the next block of measurement data."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         time = (c_double * max_reads)()
         value1 = (c_double * max_reads)()
         value2 = (c_double * max_reads)()
@@ -119,13 +136,20 @@ class ClipXAPI(object):
 
     def stop_measurement(self) -> int:
         """Stop measurement."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
         return self.clipx_api.ClipX_stopMeasurement(self.handle)
 
     def disconnect(self) -> None:
         """Disconnect from the ClipX device."""
+        if self.handle is None:
+            return
         self.clipx_api.ClipX_Disconnect(self.handle)
+        self.handle = None
 
     def is_connected(self) -> bool:
         """Check if the device is connected."""
-        return self.clipx_api.ClipX_isConnected(self.handle)
-
+        if self.handle is None:
+            return False
+        else:
+            return self.clipx_api.ClipX_isConnected(self.handle)
