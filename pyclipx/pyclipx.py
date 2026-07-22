@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 
 # Load the ClipXApi library
-clipx_api = ctypes.WinDLL('ClipXApi')  # Replace with the full path if needed
+clipx_api = ctypes.WinDLL('./ClipXApi')  # Replace with the full path if needed
 
 # Define the function prototypes (adjust as per ClipX_Interface.h)
 clipx_api.ClipX_Connect.argtypes = [ctypes.c_char_p]
