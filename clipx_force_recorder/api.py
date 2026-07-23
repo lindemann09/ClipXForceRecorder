@@ -7,7 +7,7 @@ from ctypes import *
 from dataclasses import dataclass
 from typing import List
 
-NO_CLIPX_ERROR = "ClipX not connected!"
+DLL_PATH = "C:\\Windows\\System\\ClipXApi.dll"
 
 SIGNAL_LABELS = {
     0: 'ADC Value',
@@ -60,6 +60,9 @@ SIGNAL_LABELS = {
     47: 'User Constant 10'
 }
 
+NO_CLIPX_ERROR = "ClipX not connected!"
+
+
 def get_signal_id(label:str) -> int:
     for (i, v) in SIGNAL_LABELS.items():
         if v==label:
@@ -71,6 +74,9 @@ class ClipXData:
     time: float
     values: List[float]
 
+    def to_array(self):
+        """Convert the ClipXData to a array."""
+        return [self.time] + self.values
 
 # Define the MHandle type (pointer to sClipX)
 class sClipX(Structure):
@@ -80,7 +86,7 @@ MHandle = POINTER(sClipX)
 
 class ClipXAPI(object):
 
-    def __init__(self, dll_path: str = "./ClipXApi.dll"):
+    def __init__(self, dll_path: str = DLL_PATH):
         self.clipx_api = WinDLL(dll_path)
 
         self.clipx_api.ClipX_Connect.argtypes = [c_char_p]
@@ -164,13 +170,13 @@ class ClipXAPI(object):
             raise RuntimeError(NO_CLIPX_ERROR)
         return self.clipx_api.ClipX_AvailableLines(self.handle)
 
-    # def read_next_line(self) -> list:
-    #     """Read the next line of measurement data."""
-    #     if self.handle is None:
-    #         raise RuntimeError(NO_CLIPX_ERROR)
-    #     mv_line = (c_double * 1)()  # Adjust size as needed
-    #     result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
-    #    return list(mv_line) if result > 0 else []
+    def read_next_line(self) -> list:
+        """Read the next line of measurement data."""
+        if self.handle is None:
+            raise RuntimeError(NO_CLIPX_ERROR)
+        mv_line = (c_double * 1)()  # Adjust size as needed
+        result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
+        return list(mv_line) if result > 0 else []
 
     def read_next_block(self, max_reads: int) -> List[ClipXData]:
         """Read the next block of measurement data."""
@@ -199,13 +205,6 @@ class ClipXAPI(object):
                                   value4[c], value5[c], value6[c]]))
 
         return rtn
-
-    def read_available_blocks(self) -> List[ClipXData]:
-        n = self.available_lines()
-        if n>0:
-            return self.read_next_block(n)
-        else:
-            return []
 
     def stop_measurement(self) -> int:
         """Stop measurement."""
@@ -236,19 +235,19 @@ def signalSelector(signals, h): ### FIXME NOT TESTED
 
     Args:
         signals (list): List of signal indices to configure.
-        h (ctypes.c_void_p): Handle to the ClipX connection.
+        h (c_void_p): Handle to the ClipX connection.
 
     Returns:
         int: 1 if successful, -1 if ClipX is not connected.
     """
     # Load the ClipXApi library (assuming it's already loaded)
-    clipx_api = ctypes.WinDLL('ClipXApi')
+    clipx_api = WinDLL('ClipXApi')
 
     # Define the function prototypes
-    clipx_api.ClipX_isConnected.argtypes = [ctypes.c_void_p]
-    clipx_api.ClipX_isConnected.restype = ctypes.c_bool
+    clipx_api.ClipX_isConnected.argtypes = [c_void_p]
+    clipx_api.ClipX_isConnected.restype = c_bool
 
-    clipx_api.ClipX_SDOWrite.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_char_p]
+    clipx_api.ClipX_SDOWrite.argtypes = [c_void_p, c_uint, c_uint, c_char_p]
     clipx_api.ClipX_SDOWrite.restype = None
 
     # Constants

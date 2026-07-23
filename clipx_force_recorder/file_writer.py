@@ -1,0 +1,98 @@
+import bz2
+from multiprocessing import Event, Process, Queue
+from pathlib import Path
+from queue import Empty
+
+from numpy import ndarray
+
+NEWLINE = "\n"
+ENCODING = "utf-8"
+
+class FileWriter(Process):
+
+    def __init__(
+        self,
+        filepath: Path|str = "",
+        append_mode: bool = False,
+        float_decimal_places: int = 4
+    ):
+        """To write to a file from multiple processes. Use FileWriter.queue.put(str) to write file"""
+
+        super().__init__()
+        self._filepath: Path  = Path(filepath)
+        self._append_mode = append_mode
+        self.queue = Queue()
+        self._enforce_quit = Event()
+        self._close_file = Event()
+        self._decimal_places = float_decimal_places
+
+    @property
+    def filepath(self) -> Path:
+        return self._filepath
+
+    def set_file(self, file_path: Path|str, append_mode: bool = False):
+        """Set file path and append mode for the file writer."""
+        self._filepath = Path(file_path)
+        self._append_mode = append_mode
+
+    def close_file(self):
+        """closes file after all pending writes are done and no further write occurred
+        for close_timeout seconds
+        """
+        self._close_file.set()
+
+    def enforce_quit(self):
+        """forces the process to quit immediately, even if there are pending writes in the queue"""
+        self._enforce_quit.set()
+
+    def join(self, timeout=None):
+        self._close_file.set()
+        super().join(timeout)
+
+    def run(self):
+
+        if self._filepath is None:
+            raise ValueError("File path is not set. Call set_file() with a valid file path before running the process.")
+
+        float_format = "{0:." + str(self._decimal_places) + "f},"
+        if self._append_mode:
+            mode = "a"
+        else:
+            mode = "w"
+        if self._filepath.suffix.endswith("bz2"):
+            fl = bz2.open(self._filepath, mode)
+        else:
+            fl = open(self._filepath, mode, encoding=ENCODING)
+
+        self._close_file.clear()
+        self._enforce_quit.clear()
+
+        while not self._enforce_quit.is_set():
+
+            if self._close_file.is_set():
+                try:
+                    d = self.queue.get_nowait()
+                except Empty:
+                    break  # quit process
+            else:
+                try:
+                    d = self.queue.get(timeout=0.5)
+                except Empty:
+                    continue  # wait again for events
+
+            if isinstance(d, ndarray):
+                txt = ""
+                for row in d:
+                    txt += f"{row[0]}, {row[1]}" + NEWLINE
+            elif isinstance(d, str):
+                txt = f"{d}"
+            else:
+                continue  # ignore unknown
+            if isinstance(fl, bz2.BZ2File):
+                fl.write(txt.encode(ENCODING))
+            else:
+                fl.write(txt)
+
+        fl.flush()
+        fl.close()
+

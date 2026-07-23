@@ -5,6 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12, <3.14"
 dependencies = [
-    "matplotlib>=3.11.1",
+    "readkeys>=1.0",
+    "pylsl>=1.17",
     "numpy>=2.5.1",
+    "tomlkit>=0.15.1",
 ]
+
+[project.scripts]
+clipx_force_recorder = "clipx_force_recorder.__main__:run"
