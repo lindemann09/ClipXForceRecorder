@@ -3,7 +3,7 @@ from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from queue import Empty
 
-from numpy import ndarray, atleast_2d
+from numpy import atleast_2d, ndarray
 
 NEWLINE = "\n"
 ENCODING = "utf-8"
@@ -94,7 +94,6 @@ class FileWriter(Process):
                 fl.write(txt.encode(ENCODING))
             else:
                 fl.write(txt)
-        print("closing")
         fl.flush()
         fl.close()
 
