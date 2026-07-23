@@ -1,8 +1,13 @@
+[build-system]
+requires = ["uv_build>=0.11.15,<0.12.0"]
+build-backend = "uv_build"
+
 [project]
 name = "clipx-force-recorder"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.1"
+description = "Recording and streaming ClipX Force Sensors with Python and Lab Streaming Layer (LSL)."
 readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.12, <3.14"
 dependencies = [
     "readkeys>=1.0",
@@ -13,3 +18,8 @@ dependencies = [
 
 [project.scripts]
 clipx_force_recorder = "clipx_force_recorder.__main__:run"
+
+[project.urls]
+Documentation = "https://github.com/lindemann09/ClipXForceRecorder"
+Source = "https://github.com/lindemann09/ClipXForceRecorder"
+

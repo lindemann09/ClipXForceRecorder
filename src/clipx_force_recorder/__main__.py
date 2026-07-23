@@ -1,16 +1,15 @@
 
-import sys
-
 import readkeys
 
+from . import __version__
 from .file_writer import FileWriter
 from .force_sensor import ClipXForceSensor
 from .lsl import LSLStream, cf_double64
 from .settings import RecordingSettings
-from time import sleep
+
 
 def run():
-
+    print(f"ClipX Force Recorder {__version__}")
     settings_file = "sensor_settings.toml"
     try:
         cfg = RecordingSettings.load(settings_file)
@@ -24,7 +23,7 @@ def run():
     file_writer = FileWriter("output.csv", float_decimal_places=6)
     file_writer.start()
     #file_writer.queue.put("#Hello")
-  
+
     lsl_data_stream = LSLStream()
     if cfg.lsl_stream: # LSL support
         lsl_data_stream.init(
@@ -51,7 +50,7 @@ def run():
             if lsl_data_stream.is_init:
                 for d in data:
                     lsl_data_stream.outlet.push_sample(d) # type: ignore #
-            
+
             file_writer.queue.put(data)
 
             print(f"-- {data[-1]}")
@@ -63,7 +62,7 @@ def run():
             break
     print()
     sensor.stop()
-    print("Recording stopped")  
+    print("Recording stopped")
 
     file_writer.close_file()
     file_writer.join()

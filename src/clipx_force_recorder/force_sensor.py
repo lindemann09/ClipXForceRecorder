@@ -7,8 +7,6 @@ from numpy.typing import NDArray
 from . import api
 from .settings import RecordingSettings
 
-import sys
-import os
 
 class ClipXForceSensor:
 
