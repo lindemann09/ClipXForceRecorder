@@ -83,11 +83,13 @@ class FileWriter(Process):
             if isinstance(d, ndarray):
                 txt = ""
                 for row in d:
-                    txt += f"{row[0]}, {row[1]}" + NEWLINE
+                    line = f"{row[0]}," + float_format.format(row[1])
+                    txt += line[:-1] + NEWLINE
             elif isinstance(d, str):
                 txt = f"{d}"
             else:
                 continue  # ignore unknown
+
             if isinstance(fl, bz2.BZ2File):
                 fl.write(txt.encode(ENCODING))
             else:
