@@ -7,13 +7,14 @@ from .file_writer import FileWriter
 from .force_sensor import ClipXForceSensor
 from .lsl import LSLStream, cf_double64
 from .settings import RecordingSettings
+from time import sleep
 
-
+import os
 def run():
 
     settings_file = "sensor_settings.toml"
     try:
-        cfg = RecordingSettings(settings_file)
+        cfg = RecordingSettings.load(settings_file)
     except FileNotFoundError:
         print(f"Can not load settings file. Create a default settings file: {settings_file}")
         RecordingSettings().save(settings_file)
@@ -22,13 +23,15 @@ def run():
     print(cfg)
 
     file_writer = FileWriter("output.csv", float_decimal_places=6)
-    file_writer.queue.put("Hello")
+    file_writer.start()
+    #file_writer.queue.put("#Hello")
+  
     lsl_data_stream = LSLStream()
     if cfg.lsl_stream: # LSL support
         lsl_data_stream.init(
                 name=cfg.lsl_stream_name,
                 content_type="force",
-                n_channels=1,
+                n_channels=2,
                 stream_id=f"cx",
                 freq=1000,
                 channel_format=cf_double64,
@@ -39,18 +42,20 @@ def run():
 
     sensor = ClipXForceSensor(cfg)
     sensor.start()
-    readkeys.flush()
+    #readkeys.flush()
 
-    print(f"recording from {sensor.ip_address} \n")
+    print(f"recording from {sensor.ip_address} \n\n")
     k = ""
     while True:
         data = sensor.poll()
-        if len(data) > 0:
+        if data is not None:
             if lsl_data_stream.is_init:
-                for f in data[:, 1]:
-                    lsl_data_stream.outlet.push_sample(f) # type: ignore #
+                for d in data:
+                    lsl_data_stream.outlet.push_sample(d) # type: ignore #
+            
             file_writer.queue.put(data)
-            sys.stdout.write(f"{data[-1]} \r")
+
+            print(f"-- {data[-1]}")
 
         k = readkeys.getch(NONBLOCK = True)
         if k == "b":
@@ -59,7 +64,9 @@ def run():
             break
     print()
     sensor.stop()
-    file_writer.close()
+    print("Recording stopped")  
+
+    file_writer.close_file()
     file_writer.join()
 
 

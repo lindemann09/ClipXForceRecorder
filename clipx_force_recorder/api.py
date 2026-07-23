@@ -197,7 +197,7 @@ class ClipXAPI(object):
             value4, value5,
             value6
         )
-
+        
         rtn = []
         for c in range(count):
             rtn.append(ClipXData(time[c],

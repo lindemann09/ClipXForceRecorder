@@ -3,7 +3,7 @@ from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from queue import Empty
 
-from numpy import ndarray
+from numpy import ndarray, atleast_2d
 
 NEWLINE = "\n"
 ENCODING = "utf-8"
@@ -82,7 +82,7 @@ class FileWriter(Process):
 
             if isinstance(d, ndarray):
                 txt = ""
-                for row in d:
+                for row in atleast_2d(d):
                     line = f"{row[0]}," + float_format.format(row[1])
                     txt += line[:-1] + NEWLINE
             elif isinstance(d, str):
@@ -94,7 +94,7 @@ class FileWriter(Process):
                 fl.write(txt.encode(ENCODING))
             else:
                 fl.write(txt)
-
+        print("closing")
         fl.flush()
         fl.close()
 

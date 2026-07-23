@@ -1,5 +1,6 @@
 
-from clipx_force_recorder import run
+from clipx_force_recorder.__main__ import run
 
-run()
+if __name__ == "__main__":
+    run()
 

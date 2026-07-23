@@ -7,6 +7,8 @@ from numpy.typing import NDArray
 from . import api
 from .settings import RecordingSettings
 
+import sys
+import os
 
 class ClipXForceSensor:
 
@@ -27,17 +29,18 @@ class ClipXForceSensor:
         self.api.stop_measurement()
         self.api.disconnect()
 
-    def poll(self) -> NDArray[np.float64]:
+    def poll(self, n_max_samples:int=1) -> NDArray[np.float64] | None:
         """returns last time_stamps force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
         """
-        n = self.api.available_lines()
-        if n>0:
-            self.last_clipx_data = self.api.read_next_block(n)
-            return np.array([[d.time, d.values[self.signal_id]] for d in self.last_clipx_data])
+
+        dat = self.api.read_next_block(n_max_samples)
+        if len(dat)>0:
+            self.last_clipx_data = dat
+            return np.asarray([[d.time, d.values[self.signal_id]] for d in dat])
         else:
-            return np.array([[]])
+            return None
 
     def set_baseline(self):
         print("Setting baseline...") ## TODO not yet implemented
