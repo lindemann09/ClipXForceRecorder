@@ -10,7 +10,7 @@ from .api import get_signal_id
 @dataclass
 class RecordingSettings(object):
 
-    ip_address: str = "0.0.0.0.0"
+    ip_address: str = '10.144.71.141'
     signal_label: str  = "Field Value"
     lsl_stream: bool = False
     lsl_stream_name: str = "ClipXForce"

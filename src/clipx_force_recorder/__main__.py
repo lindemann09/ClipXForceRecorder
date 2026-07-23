@@ -8,9 +8,9 @@ from .lsl import LSLStream, cf_double64
 from .settings import RecordingSettings
 
 
-def run():
+def run(settings_file: str = "clipx_sensor.settings.toml"):
+
     print(f"ClipX Force Recorder {__version__}")
-    settings_file = "sensor_settings.toml"
     try:
         cfg = RecordingSettings.load(settings_file)
     except FileNotFoundError:
