@@ -164,15 +164,15 @@ class ClipXAPI(object):
             raise RuntimeError(NO_CLIPX_ERROR)
         return self.clipx_api.ClipX_AvailableLines(self.handle)
 
-    def read_next_line(self) -> list:
-        """Read the next line of measurement data."""
-        if self.handle is None:
-            raise RuntimeError(NO_CLIPX_ERROR)
-        mv_line = (c_double * 1)()  # Adjust size as needed
-        result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
-        return mv_line if result > 0 else []
+    # def read_next_line(self) -> list:
+    #     """Read the next line of measurement data."""
+    #     if self.handle is None:
+    #         raise RuntimeError(NO_CLIPX_ERROR)
+    #     mv_line = (c_double * 1)()  # Adjust size as needed
+    #     result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
+    #    return list(mv_line) if result > 0 else []
 
-    def read_next_block(self, max_reads: int) -> ClipXData:
+    def read_next_block(self, max_reads: int) -> List[ClipXData]:
         """Read the next block of measurement data."""
         if self.handle is None:
             raise RuntimeError(NO_CLIPX_ERROR)
@@ -195,9 +195,9 @@ class ClipXAPI(object):
         rtn = []
         for c in range(count):
             rtn.append(ClipXData(time[c],
-                                 [value1[c], value2[c], value3[c], 
+                                 [value1[c], value2[c], value3[c],
                                   value4[c], value5[c], value6[c]]))
-                                
+
         return rtn
 
     def read_available_blocks(self) -> List[ClipXData]:
