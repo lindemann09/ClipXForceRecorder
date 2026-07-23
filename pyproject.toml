@@ -14,6 +14,7 @@ dependencies = [
     "pylsl>=1.17",
     "numpy>=2.5.1",
     "tomlkit>=0.15.1",
+    "pysimplegui>=6.2",
 ]
 
 [project.scripts]

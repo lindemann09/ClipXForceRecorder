@@ -9,6 +9,7 @@ source = { editable = "." }
 dependencies = [
     { name = "numpy" },
     { name = "pylsl" },
+    { name = "pysimplegui" },
     { name = "readkeys" },
     { name = "tomlkit" },
 ]
@@ -17,6 +18,7 @@ dependencies = [
 requires-dist = [
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "pylsl", specifier = ">=1.17" },
+    { name = "pysimplegui", specifier = ">=6.2" },
     { name = "readkeys", specifier = ">=1.0" },
     { name = "tomlkit", specifier = ">=0.15.1" },
 ]
@@ -65,6 +67,14 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/64/08/c2ae65d3fe8d1cfaa4be05617a6f6af71342ba0dc1750363b929098065b7/pylsl-1.18.2-py2.py3-none-manylinux_2_35_x86_64.whl", hash = "sha256:f0331fed141cf19be65017e6529edff79b8505b4781e9e1838c95de5d072ade4", size = 1043264, upload-time = "2026-04-22T04:21:30.201Z" },
     { url = "https://files.pythonhosted.org/packages/2c/b1/e599a7327376e29847dd00b33f127b9238e76d9aedd27eae6eb9ff77a190/pylsl-1.18.2-py2.py3-none-win32.whl", hash = "sha256:2f9f50aa16510600066e43628a1b66ac6b6a32b321de3000824f9c60e26cfbfa", size = 272611, upload-time = "2026-04-22T04:21:28.666Z" },
     { url = "https://files.pythonhosted.org/packages/8a/a8/8ccb88b3cd65140e57966472038baa0cebb56bde5e86ad51852faed99cad/pylsl-1.18.2-py2.py3-none-win_amd64.whl", hash = "sha256:3ea2693417c7d79766cebf967250fde78aa1a3ad2b198e40246d36f549dbfde1", size = 307506, upload-time = "2026-04-22T04:21:35.177Z" },
+]
+
+[[package]]
+name = "pysimplegui"
+version = "6.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/6d/62c502ed8cdbd13588b492f27c8728933c95be144bcbc431c1cb0d83947a/pysimplegui-6.2-py3-none-any.whl", hash = "sha256:6e60bd390b370bfdf35a2507576317a93674cfacd52d21d07c5a40867e14779f", size = 487911, upload-time = "2026-06-17T13:42:43.377Z" },
 ]
 
 [[package]]

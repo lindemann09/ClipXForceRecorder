@@ -41,4 +41,4 @@ __pycache__/
 *.txt
 *.csv
 
-sensor_settings.toml
+clipx_sensor.settings.toml

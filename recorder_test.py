@@ -1,6 +1,5 @@
 
-from src.clipx_force_recorder.__main__ import run
+from src.clipx_force_recorder import recorder
 
 if __name__ == "__main__":
-    run()
-
+    recorder.run(mock_sensor=True)  # Set mock_sensor to True for testing without a real sensor
