@@ -9,7 +9,6 @@ from .lsl import LSLStream, cf_double64
 from .settings import RecordingSettings
 from time import sleep
 
-import os
 def run():
 
     settings_file = "sensor_settings.toml"
