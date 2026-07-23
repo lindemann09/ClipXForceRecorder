@@ -1,33 +1,36 @@
-# Prerequisites
-*.d
+*.py[cod]
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# C extensions
+*.so
 
-# Precompiled Headers
-*.gch
-*.pch
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+__pycache__
 
-# Compiled Dynamic libraries
+# vim files
+*.swp
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
 
 
-# Fortran module files
-*.mod
-*.smod
+# PyCharm
+.idea
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-
-
-# Executables
-*.exe
-*.out
-*.app
+#vscode
+.vscode
 
 .venv/
 .DS_Store
@@ -37,5 +40,5 @@ __pycache__/
 .vscode/
 *.txt
 *.csv
-clipx_force_recorder
+
 
