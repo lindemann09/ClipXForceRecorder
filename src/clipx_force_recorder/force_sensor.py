@@ -1,10 +1,16 @@
+import atexit
+import ctypes as ct
 from abc import ABC, abstractmethod
+from collections import deque
+from multiprocessing import Array, Event, Process, Queue, Value
 from time import perf_counter, sleep
+from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
 from . import api
+from .lsl import LSLStream, cf_double64
 from .settings import RecordingSettings
 
 EMPTY_ARRAY = np.array([], dtype=np.float64)
@@ -89,7 +95,7 @@ class MockForceSensor(ForceSensor):
         self._started = False
 
     def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
-        """returns last time_stamps force data.
+        """returns (2D) array with [time, force].
 
         Entire block of data can be received afterwards via self.last_clipx_data
         """
@@ -105,7 +111,7 @@ class MockForceSensor(ForceSensor):
 
             t = perf_counter()
             self._last_sample_time = t
-            return np.array([[t, val] for val in dat.tolist()])
+            return np.array([[t, dat[self.signal_id] - self._bias]], dtype=np.float64)
         else:
             return EMPTY_ARRAY
 
@@ -113,22 +119,8 @@ class MockForceSensor(ForceSensor):
 
 
 
-import atexit
-import ctypes as ct
-import logging
-from collections import deque
-from multiprocessing import Array, Event, Process, Queue, Value
-from typing import Optional
-
-import numpy as np
-from numpy import typing as npt
-
-from .lsl import LSLStream, cf_double64
-from .settings import RecordingSettings
-
-DETERMINE_BIAS_SAMPLES = 100
-
 class SensorProcess(Process):
+    DETERMINE_BIAS_SAMPLES = 100
 
     def __init__(
         self,
@@ -158,7 +150,7 @@ class SensorProcess(Process):
         atexit.register(self.join)
 
 
-    def get_force(self) -> npt.NDArray[np.float64]:
+    def get_force(self) -> NDArray[np.float64]:
         return self._np_dat
 
     def get_saved_sample_cnt(self) -> int:
@@ -178,7 +170,8 @@ class SensorProcess(Process):
         self.__flag_is_saving.clear()
 
     def is_saving(self) -> bool:
-        return self.__flag_is_saving.is_set()
+
+        return self._file_writer_queue is not None and self.__flag_is_saving.is_set()
 
     def quit(self):
         self._flag_quit_request.set()
@@ -190,14 +183,13 @@ class SensorProcess(Process):
 
     def run(self):
 
-        fifo = deque(maxlen=DETERMINE_BIAS_SAMPLES)
+        fifo = deque(maxlen=SensorProcess.DETERMINE_BIAS_SAMPLES)
         if self.cfg.mock_sensor:
             sensor = MockForceSensor(self.cfg)
-            print("recording from Mock sensor \n\n")
-
         else:
             sensor = ClipXForceSensor(self.cfg)
-            print(f"recording from {sensor.ip_address} \n\n")
+
+        print(f"recording from {sensor.ip_address} \n\n")
 
         ## create init LSL
         lsl_data_stream = LSLStream()
@@ -217,41 +209,40 @@ class SensorProcess(Process):
         sensor.start()
 
         # polling loop
-        self.pause_saving()
+        self.start_saving()
         self._flag_quit_request.clear()
         self.flag_sensor_bias_is_determined.clear()
-        init_samples = DETERMINE_BIAS_SAMPLES * 2
+        init_samples = SensorProcess.DETERMINE_BIAS_SAMPLES * 2
 
         while not self._flag_quit_request.is_set():
 
-            data = sensor.poll()
+            data = sensor.poll() # time, force
             n = len(data)
             if n > 0:
-                for d in data:
-                    if init_samples > 0:
-                        # initial samples for bias determination, do not write to LSL or file writer queue
-                        init_samples -= n
-                        fifo.append(d[1])
-                        if init_samples <1:
-                            sensor.bias = np.mean(fifo)
-                            self.flag_sensor_bias_is_determined.set()
-                        continue
+                fifo.extend(data[:, 1]) # add all force values to fifo for bias determination
+                if init_samples > 0:
+                    # initial samples for bias determination, do not write to LSL or file writer queue
+                    init_samples -= n
+                    if init_samples < 1:
+                        sensor.bias = np.mean(fifo)
+                        self.flag_sensor_bias_is_determined.set()
+                    continue
 
-                    ## LSL
-                    lsl_data_stream.push_sample(d[1])
-                    fifo.append(d[1]) # for bias determination
-
-                # write to shared memory and file writer queue
+                ## LSL
+                lsl_data_stream.push_sample(data[:, 1])
+                # write to shared memory
                 self._total_sample_cnt.value += n
+                self._dat[:] = data[-1]  # last sample to shared memory
 
-            if self.is_saving() and self._file_writer_queue is not None:
-                self._file_writer_queue.put(data)
-                self._saved_sample_cnt.value += n
+                # file writer
+                if self.is_saving():
+                    self._file_writer_queue.put(data)
+                    self._saved_sample_cnt.value += n
 
-            if not self.flag_sensor_bias_is_determined.is_set():
-                # new baseline requested
-                sensor.bias = np.mean(fifo)
-                self.flag_sensor_bias_is_determined.set()
+                if not self.flag_sensor_bias_is_determined.is_set():
+                    # new baseline requested
+                    sensor.bias = np.mean(fifo)
+                    self.flag_sensor_bias_is_determined.set()
 
         # stop process
         self.pause_saving()

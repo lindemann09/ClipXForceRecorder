@@ -53,7 +53,7 @@ class FileWriter(Process):
 
         if self._filepath is None:
             raise ValueError("File path is not set. Call set_file() with a valid file path before running the process.")
-
+        print(f"FileWriter: writing to {self._filepath} (append_mode={self._append_mode})")
         float_format = "{0:." + str(self._decimal_places) + "f},"
         if self._append_mode:
             mode = "a"
