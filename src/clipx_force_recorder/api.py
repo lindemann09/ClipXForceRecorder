@@ -5,10 +5,8 @@ Oliver Lindemann
 
 from ctypes import *
 from dataclasses import dataclass
-from typing import List
 
 DLL_PATH = "C:\\Windows\\System\\ClipXApi.dll"
-
 SIGNAL_LABELS = {
     0: 'ADC Value',
     1: 'Filtered ADC Value',
@@ -62,17 +60,19 @@ SIGNAL_LABELS = {
 
 NO_CLIPX_ERROR = "ClipX not connected!"
 
-
 def get_signal_id(label:str) -> int:
     for (i, v) in SIGNAL_LABELS.items():
         if v==label:
             return i
     raise ValueError(f"Unknown signal label: {label}")
 
+
+
+
 @dataclass
 class ClipXData:
     time: float
-    values: List[float]
+    values: list[float]
 
     def to_array(self):
         """Convert the ClipXData to a array."""
@@ -178,7 +178,7 @@ class ClipXAPI(object):
         result = self.clipx_api.ClipX_ReadNextLine(self.handle, mv_line)
         return list(mv_line) if result > 0 else []
 
-    def read_next_block(self, max_reads: int) -> List[ClipXData]:
+    def read_next_block(self, max_reads: int) -> list[ClipXData]:
         """Read the next block of measurement data."""
         if self.handle is None:
             raise RuntimeError(NO_CLIPX_ERROR)
@@ -197,7 +197,7 @@ class ClipXAPI(object):
             value4, value5,
             value6
         )
-        
+
         rtn = []
         for c in range(count):
             rtn.append(ClipXData(time[c],

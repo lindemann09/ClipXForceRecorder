@@ -15,6 +15,7 @@ class RecordingSettings(object):
     lsl_stream: bool = False
     lsl_stream_name: str = "ClipXForce"
     save_data: bool = False
+    mock_sensor: bool = False
 
     @property
     def signal_id(self) -> int:
@@ -25,7 +26,8 @@ class RecordingSettings(object):
                 "signal_label": self.signal_label,
                 "lsl_stream": self.lsl_stream,
                 "lsl_stream_name": self.lsl_stream_name,
-                "save_data": self.save_data}
+                "save_data": self.save_data,
+                "mock_sensor": self.mock_sensor}
 
     @staticmethod
     def load(filename: str| Path):
@@ -42,6 +44,8 @@ class RecordingSettings(object):
             rtn.lsl_stream_name = d["lsl_stream_name"]
         if "save_data" in d:
             rtn.save_data = d["save_data"]
+        if "mock_sensor" in d:
+            rtn.mock_sensor = d["mock_sensor"]
         return rtn
 
     def save(self, filename: str| Path):

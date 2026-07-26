@@ -1,7 +1,5 @@
 
-from .recorder import run
-
-MOCKSENSOR = True
+from . import recorder
 
 if __name__ == "__main__":
-    run(mock_sensor=MOCKSENSOR)
+    recorder.run()

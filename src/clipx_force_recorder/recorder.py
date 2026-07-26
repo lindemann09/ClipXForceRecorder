@@ -1,4 +1,5 @@
 
+import numpy as np
 import PySimpleGUI as sg
 import readkeys
 
@@ -40,7 +41,7 @@ class RecorderGUI:
         self.window.close()
 
 
-def run(settings_file: str = "clipx_sensor.settings.toml", mock_sensor: bool = False):
+def run(settings_file: str = "clipx_sensor.settings.toml"):
 
     gui = RecorderGUI()
 
@@ -74,7 +75,7 @@ def run(settings_file: str = "clipx_sensor.settings.toml", mock_sensor: bool = F
 
         print("LSL stream created")
 
-    if mock_sensor:
+    if cfg.mock_sensor:
         sensor = MockForceSensor(cfg)
         cfg_info += "\n\nUSING MOCK FORCE SENSOR!"
     else:
@@ -86,21 +87,24 @@ def run(settings_file: str = "clipx_sensor.settings.toml", mock_sensor: bool = F
 
     gui.update(infodata=f"Recording from {sensor.ip_address}", cfg_info=cfg_info)
     k = ""
+    cnt = 0
     while True:
         data = sensor.poll()
-        if data is not None:
-            if lsl_data_stream.is_init:
-                for d in data:
+        if len(data) > 0:
+            for d in data:
+                if lsl_data_stream.is_init:
                     lsl_data_stream.outlet.push_sample(d) # type: ignore #
 
             file_writer.queue.put(data)
-            gui.update(data=[sensor.cnt] + data[-1].tolist())
+            cnt += len(data)
+            gui.update(data=[cnt] + data[-1].tolist())
         else:
             gui.update()
 
         k = readkeys.getch(NONBLOCK = True)
         if k == "b":
-            sensor.set_baseline()
+            pass
+            #sensor.bias = sensor.last_clipx_data[-1][cfg.signal_id]
         elif k == "q" or gui.event == sg.WIN_CLOSED or gui.event == "Close":
             break
 
