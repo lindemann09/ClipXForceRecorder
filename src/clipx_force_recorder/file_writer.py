@@ -59,7 +59,7 @@ class FileWriter(Process):
             mode = "a"
         else:
             mode = "w"
-        if self._filepath.suffix.endswith("bz2"):
+        if self._filepath.suffix.endswith(".bz2"):
             fl = bz2.open(self._filepath, mode)
         else:
             fl = open(self._filepath, mode, encoding=ENCODING)
@@ -94,6 +94,19 @@ class FileWriter(Process):
                 fl.write(txt.encode(ENCODING))
             else:
                 fl.write(txt)
+
         fl.flush()
         fl.close()
 
+
+
+
+def unique_file_path(path: Path|str) -> Path:
+    """Generates a unique file path by appending a number to the base path if the file already exists."""
+    path = Path(path)
+    counter = 1
+    unique_path = path
+    while unique_path.exists():
+        unique_path = path.with_name(f"{path.stem}_{counter}{path.suffix}")
+        counter += 1
+    return unique_path

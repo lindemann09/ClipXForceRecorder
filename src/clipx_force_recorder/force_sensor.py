@@ -197,7 +197,7 @@ class SensorProcess(Process):
             lsl_data_stream.init(
                     name=self.cfg.lsl_stream_name,
                     content_type="force",
-                    n_channels=2,
+                    n_channels=1,
                     stream_id=f"cx",
                     freq=1000,
                     channel_format=cf_double64,
@@ -209,7 +209,7 @@ class SensorProcess(Process):
         sensor.start()
 
         # polling loop
-        self.start_saving()
+        self.pause_saving()
         self._flag_quit_request.clear()
         self.flag_sensor_bias_is_determined.clear()
         init_samples = SensorProcess.DETERMINE_BIAS_SAMPLES * 2

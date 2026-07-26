@@ -1,5 +1,3 @@
-from typing import List
-
 from numpy import typing as npt
 from pylsl import (
     StreamInfo,
@@ -74,7 +72,7 @@ class LSLStream:
         self._is_init = True
         self.outlet = StreamOutlet(info)
 
-    def push_sample(self, sample: List | npt.NDArray):
+    def push_sample(self, sample: list | npt.NDArray):
         """Push a sample to the LSL stream if it is initialized."""
         if not self._is_init:
             # Don't do anything
