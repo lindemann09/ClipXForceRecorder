@@ -77,7 +77,6 @@ class ClipXForceSensor(ForceSensor):
         else:
             return EMPTY_ARRAY
 
-
 class MockForceSensor(ForceSensor):
 
     def __init__(self, rs: RecordingSettings):
@@ -132,7 +131,7 @@ class SensorProcess(Process):
 
         # DOC explain usage
 
-        super(SensorProcess, self).__init__()
+        super().__init__()
 
         self.cfg = recording_settings
         self._file_writer_queue = file_writer_queue
@@ -188,6 +187,7 @@ class SensorProcess(Process):
         self.flag_sensor_bias_is_determined.clear()
         init_samples = SensorProcess.DETERMINE_BIAS_SAMPLES * 2
         fifo = deque(maxlen=SensorProcess.DETERMINE_BIAS_SAMPLES)
+        t = 0.0
 
         if self.cfg.mock_sensor:
             sensor = MockForceSensor(self.cfg)
@@ -211,6 +211,7 @@ class SensorProcess(Process):
 
         print(f"recording from {sensor.ip_address} \n\n")
         sensor.start()
+        start_time_ms = perf_counter() * 1000  # ms
 
         # polling loop
         while not self._flag_quit_request.is_set():
@@ -218,6 +219,7 @@ class SensorProcess(Process):
             data = sensor.poll() # time, force
             n = len(data)
             if n > 0:
+                t = perf_counter() # local receive time
                 fifo.extend(data[:, 1]) # add all force values to fifo for bias determination
                 if init_samples > 0:
                     # initial samples for bias determination, do not write to LSL or file writer queue
@@ -235,6 +237,9 @@ class SensorProcess(Process):
 
                 # file writer
                 if self.is_saving():
+                    if self.cfg.add_local_time:
+                        t_col = np.full((data.shape[0], 1), int(t*1000 - start_time_ms)) # ms
+                        data = np.hstack((t_col, data))
                     self._file_writer_queue.put(data)
                     self._saved_sample_cnt.value += n
 

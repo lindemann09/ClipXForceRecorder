@@ -83,7 +83,9 @@ class FileWriter(Process):
             if isinstance(d, ndarray):
                 txt = ""
                 for row in atleast_2d(d):
-                    line = f"{row[0]}," + float_format.format(row[1])
+                    line = ""
+                    for v in row:
+                        line += float_format.format(v)
                     txt += line[:-1] + NEWLINE
             elif isinstance(d, str):
                 txt = f"{d}"

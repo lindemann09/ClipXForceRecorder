@@ -1,16 +1,14 @@
-from time import sleep, time
+from time import asctime, localtime, time
 
 import PySimpleGUI as sg
 import readkeys
-
-from clipx_force_recorder import file_writer
 
 from . import __version__
 from .file_writer import FileWriter, unique_file_path
 from .force_sensor import SensorProcess
 from .settings import RecordingSettings
 
-GUI_UPDATE_INTERVAL = 0.1  # seconds
+GUI_UPDATE_INTERVAL = 0.3  # seconds
 
 class Recorder:
     """Sensor and a file writer to record data from the ClipX Force Sensor."""
@@ -29,6 +27,13 @@ class Recorder:
         if self.cfg.save_data:
             self.file_writer = FileWriter(filename, append_mode=False)
             self.file_writer.start()
+            self.file_writer.queue.put(self.cfg.asdict())
+
+            txt = f"# Recorded at {asctime(localtime())} with clipx_force_recorder {__version__}\n"
+            if self.cfg.add_local_time:
+                txt += "local_time, "
+            txt += "clipx_time, force\n"
+            self.file_writer.queue.put(txt)
             self.sensor = SensorProcess(self.cfg, self.file_writer.queue)
         else:
             self.file_writer = None
@@ -130,9 +135,10 @@ class RecorderGUI:
             self.window["INFO"].update(infodata)  # type: ignore
         if data is not None:
             txt = (
-                f" {data[0]}, "
-                + RecorderGUI.FLOAT_FORMAT.format(data[1])
-                + ", "
+                f" cnt: {data[0]} "
+                #+ RecorderGUI.FLOAT_FORMAT.format(data[1])
+                #+ ", "
+                + "      force: "
                 + RecorderGUI.FLOAT_FORMAT.format(data[2])
             )
             self.window["DATA"].update(txt)  # type: ignore
@@ -153,7 +159,8 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
         cfg = RecordingSettings.load(settings_file)
     except FileNotFoundError:
         print(
-            f"Can not load settings file. Create a default settings file: {settings_file}"
+            f"\nCannot load settings file. Create a default settings file: {settings_file}"
+            "\nPlease RESTART the program after editing the settings file."
         )
         RecordingSettings().save(settings_file)
         exit()
@@ -170,13 +177,13 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
     t = time()
     while True:
         if time() - t > GUI_UPDATE_INTERVAL:
-
+            t = time()
             if isinstance(recorder.sensor, SensorProcess):
                 cnt = recorder.sensor.get_total_sample_cnt()
                 data = recorder.sensor.get_force().tolist()
                 gui.update(data=[cnt] + data)
-            else:
-                gui.update()
+        else:
+            gui.update()
 
         if gui.event == "StartQuit":
 
