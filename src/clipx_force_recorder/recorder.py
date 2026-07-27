@@ -3,6 +3,8 @@ from time import sleep, time
 import PySimpleGUI as sg
 import readkeys
 
+from clipx_force_recorder import file_writer
+
 from . import __version__
 from .file_writer import FileWriter, unique_file_path
 from .force_sensor import SensorProcess
@@ -10,17 +12,55 @@ from .settings import RecordingSettings
 
 GUI_UPDATE_INTERVAL = 0.1  # seconds
 
+class Recorder:
+    """Sensor and a file writer to record data from the ClipX Force Sensor."""
+
+    def __init__(self, cfg: RecordingSettings):
+        self.cfg = cfg
+        self.file_writer = None
+        self.sensor = None
+
+    def start(self, filename: str = "", lsl_stream: bool | None=None):
+
+        self.cfg.save_data = len(filename) > 0
+        if lsl_stream is not None:
+            self.cfg.lsl_stream = lsl_stream
+
+        if self.cfg.save_data:
+            self.file_writer = FileWriter(filename, append_mode=False)
+            self.file_writer.start()
+            self.sensor = SensorProcess(self.cfg, self.file_writer.queue)
+        else:
+            self.file_writer = None
+            self.sensor = SensorProcess(self.cfg, None)
+
+        self.sensor.start()
+        self.sensor.flag_sensor_bias_is_determined.wait()  # Wait until the sensor bias is determined
+
+        if isinstance(self.file_writer, FileWriter):
+            self.sensor.start_saving()
+
+    def quit(self):
+
+        if isinstance(self.sensor, SensorProcess):
+            self.sensor.quit()
+            self.sensor.join()
+            self.sensor = None
+
+        if isinstance(self.file_writer, FileWriter):
+            self.file_writer.close_file()
+            self.file_writer.join()
+            self.file_writer = None
+
+    def is_recording(self) -> bool:
+        return isinstance(self.sensor, SensorProcess)
+
 
 class RecorderGUI:
     FLOAT_FORMAT = "{0:.4f}"
 
     def __init__(self, cfg: RecordingSettings):
-
-        if cfg.save_data:
-            flname = unique_file_path("output.csv")
-        else:
-            flname = ""
-
+        self.ip_address = cfg.ip_address
         fr_settings = sg.Frame(
             "Settings",
             [
@@ -30,13 +70,13 @@ class RecorderGUI:
                 ],
                 [
                     sg.Text("Filename:", size=(8, 1)),
-                    sg.Input(default_text=flname, size=(24, 1), key="datafilename"),
+                    sg.Input(default_text="clipx_data.csv", size=(24, 1), key="datafilename"),
                 ],
             ],            size=(310, 80),
 
         )
         fr_info = sg.Frame(
-            "Recording",
+            "Not recording",
             [
                 [sg.Text("", key="DATA")],  # Text element
             ],
@@ -49,17 +89,10 @@ class RecorderGUI:
                 [
                     sg.Button(
                         "Start Recording",
-                        size=(17.5, 1.2),
+                        size=(34, 1),
                         button_color=("black", "lightgreen"),
                         disabled_button_color=("black", "lightgrey"),
-                        key="Start",
-                    ),
-                    sg.Button(
-                        "Quit",
-                        size=(8, 1.2),
-                        disabled_button_color=("grey", "lightgrey"),
-                        disabled=True,
-                        key="Quit",
+                        key="StartQuit",
                     ),
                 ]
             ],
@@ -73,6 +106,20 @@ class RecorderGUI:
         self.event, self.values = self.window.read(
             timeout=0
         )  # Non-blocking read with timeout
+
+        self.make_filename_unique()
+
+    def set_recording_status(self, is_recording: bool):
+
+        if is_recording:
+            self.window["StartQuit"].update(
+                text="Stop", button_color=("black", "orange"), disabled=False)
+            self.update(infodata=f"Recording from {self.ip_address}")
+        else:
+            self.window["StartQuit"].update(
+                text="Start Recording", button_color=("black", "lightgreen"), disabled=False)
+            self.make_filename_unique()
+            self.update(infodata="Recording Stopped")
 
     def update(self, infodata=None, data=None):
         """Update the GUI with new data and return the event and values from the window.read() call."""
@@ -93,6 +140,11 @@ class RecorderGUI:
     def close(self):
         self.window.close()
 
+    def make_filename_unique(self):
+        """Generate a unique file path by appending a number if the file already exists."""
+        flname = unique_file_path(self.values["datafilename"])
+        self.window["datafilename"].update(flname)  # type: ignore
+
 
 def run(settings_file: str = "clipx_sensor.settings.toml"):
 
@@ -106,6 +158,7 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
         RecordingSettings().save(settings_file)
         exit()
 
+    recorder = Recorder(cfg)
     gui = RecorderGUI(cfg)
 
     cfg_info = str(cfg.asdict())[1:-1].replace(", ", "\n")
@@ -113,51 +166,39 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
         cfg_info += "\n\nUSING MOCK FORCE SENSOR!"
     print(cfg_info)
 
-    file_writer = FileWriter()
-    sensor = SensorProcess(cfg, file_writer.queue)
-
     k = ""
     t = time()
     while True:
         if time() - t > GUI_UPDATE_INTERVAL:
-            if sensor.is_alive():
-                cnt = sensor.get_total_sample_cnt()
-                data = sensor.get_force().tolist()
+
+            if isinstance(recorder.sensor, SensorProcess):
+                cnt = recorder.sensor.get_total_sample_cnt()
+                data = recorder.sensor.get_force().tolist()
                 gui.update(data=[cnt] + data)
             else:
-                gui.update(infodata="Not recording!")
+                gui.update()
 
-        if gui.event == "Start" and not sensor.is_alive():
-            sensor.cfg.save_data = gui.values["save_data"]
-            sensor.cfg.lsl_stream = gui.values["lsl"]
-            sensor.start()
-            sleep(0.1)  # give file writer time to start
+        if gui.event == "StartQuit":
 
-            if sensor.cfg.save_data:
-                file_writer.set_file(gui.values["datafilename"], append_mode=False)
-                file_writer.start()
-                sensor.start_saving()
-
-            gui.window["Start"].update(disabled=True)
-            gui.window["Quit"].update(disabled=False)
-            gui.update(infodata=f"Recording from {cfg.ip_address}")
+            if recorder.is_recording():
+                recorder.quit()
+                gui.set_recording_status(False)
+            else:
+                if gui.values["save_data"]:
+                    filename = gui.values["datafilename"]
+                else:
+                    filename = ""
+                recorder.start(filename, gui.values["lsl"])
+                gui.set_recording_status(True)
 
         k = readkeys.getch(NONBLOCK=True)
         if k == "b":
             pass
             # sensor.bias = sensor.last_clipx_data[-1][cfg.signal_id]
-        elif k == "q" or gui.event == sg.WIN_CLOSED or gui.event == "Quit":
+        elif k == "q" or gui.event == sg.WIN_CLOSED:
             break
 
-    gui.update(infodata="Stopping")
-    sensor.quit()
-    sensor.join()
-
-    if file_writer.is_alive():
-        file_writer.close_file()
-        file_writer.join()
-
-
+    recorder.quit()
     gui.close()
 
 

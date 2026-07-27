@@ -100,13 +100,17 @@ class FileWriter(Process):
 
 
 
-
 def unique_file_path(path: Path|str) -> Path:
     """Generates a unique file path by appending a number to the base path if the file already exists."""
     path = Path(path)
-    counter = 1
-    unique_path = path
-    while unique_path.exists():
-        unique_path = path.with_name(f"{path.stem}_{counter}{path.suffix}")
+    stem_parts = path.stem.rsplit("_", 1)
+    try:
+        counter = int(stem_parts[-1])
+    except ValueError:
+        counter = 1
+
+    while True:
+        unique_path = path.with_name(f"{stem_parts[0]}_{counter}{path.suffix}")
         counter += 1
-    return unique_path
+        if not unique_path.exists():
+            return unique_path

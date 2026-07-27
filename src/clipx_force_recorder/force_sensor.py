@@ -125,7 +125,7 @@ class SensorProcess(Process):
     def __init__(
         self,
         recording_settings: RecordingSettings,
-        file_writer_queue: Optional[Queue],
+        file_writer_queue: Optional[Queue]
     ):
         """ForceSensorProcess
         """
@@ -183,13 +183,16 @@ class SensorProcess(Process):
 
     def run(self):
 
+        self.__flag_is_saving.clear()
+        self._flag_quit_request.clear()
+        self.flag_sensor_bias_is_determined.clear()
+        init_samples = SensorProcess.DETERMINE_BIAS_SAMPLES * 2
         fifo = deque(maxlen=SensorProcess.DETERMINE_BIAS_SAMPLES)
+
         if self.cfg.mock_sensor:
             sensor = MockForceSensor(self.cfg)
         else:
             sensor = ClipXForceSensor(self.cfg)
-
-        print(f"recording from {sensor.ip_address} \n\n")
 
         ## create init LSL
         lsl_data_stream = LSLStream()
@@ -206,14 +209,10 @@ class SensorProcess(Process):
 
             print("LSL stream created")
 
+        print(f"recording from {sensor.ip_address} \n\n")
         sensor.start()
 
         # polling loop
-        self.pause_saving()
-        self._flag_quit_request.clear()
-        self.flag_sensor_bias_is_determined.clear()
-        init_samples = SensorProcess.DETERMINE_BIAS_SAMPLES * 2
-
         while not self._flag_quit_request.is_set():
 
             data = sensor.poll() # time, force
