@@ -12,7 +12,7 @@ class RecordingSettings(object):
 
     ip_address: str = '10.144.71.141'
     signal_label: str  = "Field Value"
-    lsl_stream: bool = False
+    lsl_stream: bool = True
     lsl_stream_name: str = "ClipXForce"
     save_data: bool = True
     mock_sensor: bool = False

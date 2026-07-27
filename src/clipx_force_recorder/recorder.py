@@ -65,6 +65,7 @@ class RecorderGUI:
     FLOAT_FORMAT = "{0:.4f}"
 
     def __init__(self, cfg: RecordingSettings):
+
         self.ip_address = cfg.ip_address
         fr_settings = sg.Frame(
             "Settings",
@@ -94,10 +95,15 @@ class RecorderGUI:
                 [
                     sg.Button(
                         "Start Recording",
-                        size=(34, 1),
+                        size=(23, 1),
                         button_color=("black", "lightgreen"),
                         disabled_button_color=("black", "lightgrey"),
-                        key="StartQuit",
+                        key="StartStop",
+                    ),
+                    sg.Button(
+                        "Quit",
+                        size=(10, 1),
+                        key="QuitApp",
                     ),
                 ]
             ],
@@ -107,7 +113,7 @@ class RecorderGUI:
             [fr_info],
             [fr_buttons],
         ]
-        self.window = sg.Window("ClipX Force Recorder", self.layout)
+        self.window = sg.Window(f"ClipX Force Recorder {__version__}", self.layout)
         self.event, self.values = self.window.read(
             timeout=0
         )  # Non-blocking read with timeout
@@ -117,19 +123,19 @@ class RecorderGUI:
     def set_recording_status(self, is_recording: bool):
 
         if is_recording:
-            self.window["StartQuit"].update(
+            self.window["StartStop"].update(
                 text="Stop", button_color=("black", "orange"), disabled=False)
             self.update(infodata=f"Recording from {self.ip_address}")
         else:
-            self.window["StartQuit"].update(
+            self.window["StartStop"].update(
                 text="Start Recording", button_color=("black", "lightgreen"), disabled=False)
             self.make_filename_unique()
             self.update(infodata="Recording Stopped")
 
-    def update(self, infodata=None, data=None):
+    def update(self, infodata=None, data=None, timeout: float = 0):
         """Update the GUI with new data and return the event and values from the window.read() call."""
         self.event, self.values = self.window.read(
-            timeout=0
+            timeout=timeout
         )  # Non-blocking read with timeout
         if infodata is not None:
             self.window["INFO"].update(infodata)  # type: ignore
@@ -183,11 +189,14 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
                 data = recorder.sensor.get_force().tolist()
                 gui.update(data=[cnt] + data)
         else:
-            gui.update()
+            gui.update(timeout=GUI_UPDATE_INTERVAL * 1000.0)  # milliseconds
 
-        if gui.event == "StartQuit":
+        if gui.event == "StartStop":
 
             if recorder.is_recording():
+                answer = sg.popup_ok_cancel("Stop recording?", keep_on_top=True)
+                if answer != "OK":
+                    continue
                 recorder.quit()
                 gui.set_recording_status(False)
             else:
@@ -202,7 +211,15 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
         if k == "b":
             pass
             # sensor.bias = sensor.last_clipx_data[-1][cfg.signal_id]
-        elif k == "q" or gui.event == sg.WIN_CLOSED:
+        elif k == "q":
+            break
+        if gui.event == "QuitApp":
+            if recorder.is_recording():
+                answer = sg.popup_ok_cancel("Quit recording?", keep_on_top=True)
+                if answer != "OK":
+                    continue
+            break
+        elif gui.event == sg.WIN_CLOSED:
             break
 
     recorder.quit()

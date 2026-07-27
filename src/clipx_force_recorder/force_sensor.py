@@ -211,7 +211,7 @@ class SensorProcess(Process):
 
         print(f"recording from {sensor.ip_address} \n\n")
         sensor.start()
-        start_time_ms = perf_counter() * 1000  # ms
+        start_time = perf_counter()
 
         # polling loop
         while not self._flag_quit_request.is_set():
@@ -238,7 +238,7 @@ class SensorProcess(Process):
                 # file writer
                 if self.is_saving():
                     if self.cfg.add_local_time:
-                        t_col = np.full((data.shape[0], 1), int(t*1000 - start_time_ms)) # ms
+                        t_col = np.full((data.shape[0], 1), t - start_time) # ms
                         data = np.hstack((t_col, data))
                     self._file_writer_queue.put(data)
                     self._saved_sample_cnt.value += n
