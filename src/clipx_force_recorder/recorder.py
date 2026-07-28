@@ -60,7 +60,6 @@ class Recorder:
     def is_recording(self) -> bool:
         return isinstance(self.sensor, SensorProcess)
 
-
 class RecorderGUI:
     FLOAT_FORMAT = "{0:.4f}"
 
@@ -95,17 +94,25 @@ class RecorderGUI:
                 [
                     sg.Button(
                         "Start Recording",
-                        size=(23, 1),
+                        size=(35, 1),
                         button_color=("black", "lightgreen"),
                         disabled_button_color=("black", "lightgrey"),
                         key="StartStop",
+                    )
+                ],
+                [
+                    sg.Button(
+                        "Baseline",
+                        size=(16, 1),
+                        key="Baseline",
                     ),
                     sg.Button(
                         "Quit",
-                        size=(10, 1),
+                        size=(16, 1),
                         key="QuitApp",
                     ),
                 ]
+
             ],
         )
         self.layout = [
@@ -207,19 +214,25 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
                 recorder.start(filename, gui.values["lsl"])
                 gui.set_recording_status(True)
 
-        k = readkeys.getch(NONBLOCK=True)
-        if k == "b":
-            pass
-            # sensor.bias = sensor.last_clipx_data[-1][cfg.signal_id]
-        elif k == "q":
-            break
-        if gui.event == "QuitApp":
+        elif gui.event == "Baseline":
+            if recorder.is_recording():
+                recorder.sensor.determine_bias()  # type: ignore
+
+        elif gui.event == "QuitApp":
             if recorder.is_recording():
                 answer = sg.popup_ok_cancel("Quit recording?", keep_on_top=True)
                 if answer != "OK":
                     continue
             break
+
         elif gui.event == sg.WIN_CLOSED:
+            break
+
+        k = readkeys.getch(NONBLOCK=True)
+        if k == "b":
+            pass
+            # sensor.bias = sensor.last_clipx_data[-1][cfg.signal_id]
+        elif k == "q":
             break
 
     recorder.quit()
