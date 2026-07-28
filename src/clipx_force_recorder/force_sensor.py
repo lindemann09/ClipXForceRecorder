@@ -9,8 +9,7 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from . import api
-from .lsl import LSLStream, cf_double64
+from . import api, lsl
 from .settings import RecordingSettings
 
 EMPTY_ARRAY = np.array([], dtype=np.float64)
@@ -40,7 +39,7 @@ class ForceSensor(ABC):
         pass
 
     @abstractmethod
-    def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
         """returns last force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
@@ -49,6 +48,8 @@ class ForceSensor(ABC):
 
 
 class ClipXForceSensor(ForceSensor):
+
+    SAMPLINGRATE = 100
 
     def __init__(self, rs: RecordingSettings):
         super().__init__(rs)
@@ -64,7 +65,7 @@ class ClipXForceSensor(ForceSensor):
         self.api.stop_measurement()
         self.api.disconnect()
 
-    def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
         """returns last force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
@@ -78,6 +79,8 @@ class ClipXForceSensor(ForceSensor):
             return EMPTY_ARRAY
 
 class MockForceSensor(ForceSensor):
+
+    SAMPLINGRATE = 100
 
     def __init__(self, rs: RecordingSettings):
         super().__init__(rs)
@@ -93,7 +96,7 @@ class MockForceSensor(ForceSensor):
     def stop(self):
         self._started = False
 
-    def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
         """returns (2D) array with [time, force].
 
         Entire block of data can be received afterwards via self.last_clipx_data
@@ -102,7 +105,7 @@ class MockForceSensor(ForceSensor):
         if not self._started:
             return EMPTY_ARRAY
 
-        if (perf_counter() - self._last_sample_time) > 0.001: # 1ms
+        if (perf_counter() - self._last_sample_time) > 1/self.SAMPLINGRATE: # 1ms
             self._cnt += 1
             x = self._cnt / 1000
             dat = 10 + np.array((np.sin(x/2), np.cos(x/5), np.sin(x),
@@ -195,31 +198,32 @@ class SensorProcess(Process):
             sensor = ClipXForceSensor(self.cfg)
 
         ## create init LSL
-        lsl_data_stream = LSLStream()
         if self.cfg.lsl_stream: # LSL support
-            lsl_data_stream.init(
+            lsl_data_stream = lsl.init_stream(
                     name=self.cfg.lsl_stream_name,
                     content_type="force",
                     n_channels=1,
                     stream_id=f"cx",
-                    freq=1000,
-                    channel_format=cf_double64,
+                    freq=sensor.SAMPLINGRATE,
+                    channel_format=lsl.cf_double64,
                     metadata={},
                 )
-
             print("LSL stream created")
+        else:
+            lsl_data_stream = None
+
 
         print(f"recording from {sensor.ip_address} \n\n")
         sensor.start()
-        start_time = perf_counter()
+        start_time = lsl.local_clock()
 
         # polling loop
         while not self._flag_quit_request.is_set():
 
-            data = sensor.poll() # time, force
+            data = sensor.pull() # time, force
             n = len(data)
             if n > 0:
-                t = perf_counter() # local receive time
+                t = lsl.local_clock() # local receive time
                 fifo.extend(data[:, 1]) # add all force values to fifo for bias determination
                 if init_samples > 0:
                     # initial samples for bias determination, do not write to LSL or file writer queue
@@ -230,7 +234,10 @@ class SensorProcess(Process):
                     continue
 
                 ## LSL
-                lsl_data_stream.push_sample(data[:, 1])
+                if lsl_data_stream is not None:
+                    for d in data:
+                        lsl_data_stream.push_sample([d[1]], timestamp=d[0]) # time, force
+
                 # write to shared memory
                 self._total_sample_cnt.value += n
                 self._dat[:] = data[-1]  # last sample to shared memory
