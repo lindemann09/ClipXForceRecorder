@@ -111,8 +111,9 @@ def unique_file_path(path: Path|str) -> Path:
     except ValueError:
         counter = 1
 
+    unique_path = path
     while True:
-        unique_path = path.with_name(f"{stem_parts[0]}_{counter}{path.suffix}")
-        counter += 1
         if not unique_path.exists():
             return unique_path
+        unique_path = path.with_name(f"{stem_parts[0]}_{counter}{path.suffix}")
+        counter += 1
