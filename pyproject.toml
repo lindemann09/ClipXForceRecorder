@@ -4,11 +4,11 @@ build-backend = "uv_build"
 
 [project]
 name = "clipx-force-recorder"
-version = "0.1.12"
+version = "0.1.13b"
 description = "Recording and streaming ClipX Force Sensors with Python and Lab Streaming Layer (LSL)."
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.12, <3.14"
+requires-python = ">=3.14, <3.15"
 dependencies = [
     "readkeys>=1.0",
     "pylsl>=1.17",
