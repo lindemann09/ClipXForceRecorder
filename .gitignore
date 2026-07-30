@@ -42,4 +42,4 @@ __pycache__/
 *.csv
 
 uv.lock
-clipx_sensor.settings.toml
+*settings.toml
