@@ -3,7 +3,7 @@ from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from queue import Empty
 
-from numpy import atleast_2d, ndarray
+from .types import ForceSensorData
 
 NEWLINE = "\n"
 ENCODING = "utf-8"
@@ -12,7 +12,9 @@ class FileWriter(Process):
 
     def __init__(
         self,
-        filepath: Path|str = "",
+        filepath: Path|str,
+        write_local_time: bool,
+        write_deviceid: bool = False,
         append_mode: bool = False,
         float_decimal_places: int = 4
     ):
@@ -25,6 +27,8 @@ class FileWriter(Process):
         self._enforce_quit = Event()
         self._close_file = Event()
         self._decimal_places = float_decimal_places
+        self._write_local_time = write_local_time
+        self._write_deviceid = write_deviceid
 
     @property
     def filepath(self) -> Path:
@@ -54,7 +58,6 @@ class FileWriter(Process):
         if self._filepath is None:
             raise ValueError("File path is not set. Call set_file() with a valid file path before running the process.")
         print(f"FileWriter: writing to {self._filepath} (append_mode={self._append_mode})")
-        float_format = "{0:." + str(self._decimal_places) + "f},"
         if self._append_mode:
             mode = "a"
         else:
@@ -80,13 +83,11 @@ class FileWriter(Process):
                 except Empty:
                     continue  # wait again for events
 
-            if isinstance(d, ndarray):
-                txt = ""
-                for row in atleast_2d(d):
-                    line = ""
-                    for v in row:
-                        line += float_format.format(v)
-                    txt += line[:-1] + NEWLINE
+            if isinstance(d, ForceSensorData):
+                txt = d.csv(write_local_time=self._write_local_time,
+                            write_device_id=self._write_deviceid,
+                            float_decimal_places=self._decimal_places) + NEWLINE
+
             elif isinstance(d, str):
                 txt = f"{d}"
             else:

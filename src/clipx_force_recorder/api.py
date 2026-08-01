@@ -4,7 +4,8 @@ Oliver Lindemann
 """
 
 from ctypes import *
-from dataclasses import dataclass
+
+from .types import ClipXData
 
 DLL_PATH = "C:\\Windows\\System\\ClipXApi.dll"
 SIGNAL_LABELS = {
@@ -66,17 +67,6 @@ def get_signal_id(label:str) -> int:
             return i
     raise ValueError(f"Unknown signal label: {label}")
 
-
-
-
-@dataclass
-class ClipXData:
-    time: float
-    values: list[float]
-
-    def to_array(self):
-        """Convert the ClipXData to a array."""
-        return [self.time] + self.values
 
 # Define the MHandle type (pointer to sClipX)
 class sClipX(Structure):

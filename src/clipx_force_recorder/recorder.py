@@ -3,7 +3,7 @@ from time import asctime, localtime, time
 import PySimpleGUI as sg
 import readkeys
 
-from . import __version__
+from . import APPNAME, __version__
 from .file_writer import FileWriter, unique_file_path
 from .force_sensor import SensorProcess
 from .settings import RecordingSettings
@@ -25,14 +25,17 @@ class Recorder:
             self.cfg.lsl_stream = lsl_stream
 
         if self.cfg.save_data:
-            self.file_writer = FileWriter(filename, append_mode=False)
+            self.file_writer = FileWriter(filename,
+                                          write_local_time=self.cfg.add_local_time,
+                                          append_mode=False)
             self.file_writer.start()
             self.file_writer.queue.put(self.cfg.asdict())
 
-            txt = f"# Recorded at {asctime(localtime())} with clipx_force_recorder {__version__}\n"
+            txt = f"# Recorded at {asctime(localtime())} with {APPNAME} {__version__}\n"
+            txt += "clipx_time,"
             if self.cfg.add_local_time:
-                txt += "local_time, "
-            txt += "clipx_time, force\n"
+                txt += "local_time,"
+            txt += "force\n"
             self.file_writer.queue.put(txt)
             self.sensor = SensorProcess(self.cfg, self.file_writer.queue)
         else:
@@ -149,10 +152,8 @@ class RecorderGUI:
         if data is not None:
             txt = (
                 f" cnt: {data[0]} "
-                #+ RecorderGUI.FLOAT_FORMAT.format(data[1])
-                #+ ", "
                 + "      force: "
-                + RecorderGUI.FLOAT_FORMAT.format(data[2])
+                + RecorderGUI.FLOAT_FORMAT.format(data[1])
             )
             self.window["DATA"].update(txt)  # type: ignore
 
@@ -193,8 +194,8 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
             t = time()
             if isinstance(recorder.sensor, SensorProcess):
                 cnt = recorder.sensor.get_total_sample_cnt()
-                data = recorder.sensor.get_force().tolist()
-                gui.update(data=[cnt] + data)
+                f = recorder.sensor.get_force()
+                gui.update(data=[cnt, f])
         else:
             gui.update(timeout=GUI_UPDATE_INTERVAL * 1000.0)  # milliseconds
 

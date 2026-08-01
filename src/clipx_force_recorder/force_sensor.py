@@ -3,8 +3,8 @@ import ctypes as ct
 import os
 from abc import ABC, abstractmethod
 from collections import deque
-from multiprocessing import Array, Event, Process, Queue, Value
-from time import perf_counter, sleep
+from multiprocessing import Event, Process, Queue, Value
+from time import sleep
 from typing import Optional
 
 import numpy as np
@@ -12,6 +12,7 @@ from numpy.typing import NDArray
 
 from . import api, lsl
 from .settings import RecordingSettings
+from .types import ForceSensorData
 
 EMPTY_ARRAY = np.array([], dtype=np.float64)
 
@@ -40,7 +41,7 @@ class ForceSensor(ABC):
         pass
 
     @abstractmethod
-    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
         """returns last force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
@@ -66,18 +67,18 @@ class ClipXForceSensor(ForceSensor):
         self.api.stop_measurement()
         self.api.disconnect()
 
-    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def poll(self, n_max_samples:int=1) -> list[ForceSensorData]:
         """returns last force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
         """
 
-        dat = self.api.read_next_block(n_max_samples)
-        if len(dat)>0:
-            data = np.array([[d.time, d.values[self.signal_id] - self._bias] for d in dat])
-            return data
-        else:
-            return EMPTY_ARRAY
+        data_clipx = self.api.read_next_block(n_max_samples)
+        t = lsl.local_clock()
+        return [ForceSensorData(force=d.values[self.signal_id] - self._bias,
+                          time=t,
+                          clipx_time=d.time)
+                for d in data_clipx]
 
 class MockForceSensor(ForceSensor):
 
@@ -97,28 +98,26 @@ class MockForceSensor(ForceSensor):
     def stop(self):
         self._started = False
 
-    def pull(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def poll(self, n_max_samples:int=1) -> list[ForceSensorData]:
         """returns (2D) array with [time, force].
 
         Entire block of data can be received afterwards via self.last_clipx_data
         """
 
         if not self._started:
-            return EMPTY_ARRAY
+            return []
 
-        if (perf_counter() - self._last_sample_time) > 1/self.SAMPLINGRATE: # 1ms
+        t = lsl.local_clock()
+        if (t - self._last_sample_time) > 1/self.SAMPLINGRATE: # 1ms
             self._cnt += 1
             x = self._cnt / 100
             dat = np.array((np.sin(x/2), np.cos(x/5), np.sin(x),
                                np.sin(x/2), np.cos(x/5), np.sin(x))) * 10
 
-            t = perf_counter()
             self._last_sample_time = t
-            return np.array([[t, dat[self.signal_id] - self._bias]], dtype=np.float64)
+            return [ForceSensorData(force=dat[self.signal_id] - self._bias, time=t, clipx_time=t)]
         else:
-            return EMPTY_ARRAY
-
-
+            return []
 
 
 
@@ -143,10 +142,7 @@ class SensorProcess(Process):
         self.stream_id = f"cx_{os.getpid()}"
         self._file_writer_queue = file_writer_queue
 
-        self._dat = Array(ct.c_double, 2)
-        self._np_dat = np.frombuffer(
-            self._dat.get_obj(), dtype=np.float64
-        )  # numpy view
+        self._dat = Value(ct.c_double, 0)
         self._saved_sample_cnt = Value(ct.c_int64, 0)
         self._total_sample_cnt = Value(ct.c_int64, 0)
         self.flag_sensor_bias_is_determined = Event()
@@ -156,10 +152,11 @@ class SensorProcess(Process):
         atexit.register(self.join)
 
 
-    def get_force(self) -> NDArray[np.float64]:
-        return self._np_dat
+    def get_force(self) -> float:
+        return self._dat.value
 
     def get_saved_sample_cnt(self) -> int:
+        """Return the number of samples that have been written to storage."""
         return self._saved_sample_cnt.value
 
     def get_total_sample_cnt(self) -> int:
@@ -184,7 +181,7 @@ class SensorProcess(Process):
 
     def join(self, timeout=None):
         self._flag_quit_request.set()
-        super(SensorProcess, self).join(timeout)
+        super().join(timeout)
 
 
     def run(self):
@@ -218,33 +215,26 @@ class SensorProcess(Process):
 
         print(f"recording from {sensor.ip_address} \n\n")
         sensor.start()
-        start_time = lsl.local_clock()
 
         # polling loop
         while not self._flag_quit_request.is_set():
 
-            data = sensor.pull() # time, force
-            n = len(data)
-            if n > 0:
-                t = lsl.local_clock() # local receive time
-                fifo.extend(data[:, 1]) # add all force values to fifo for bias determination
-
+            data = sensor.poll() # time, force
+            for d in data:
+                fifo.append(d.force) # add all force values to fifo for bias determination
                 ## LSL
                 if lsl_data_stream is not None:
                     for d in data:
-                        lsl_data_stream.push_sample([d[1]], timestamp=d[0]) # time, force
+                        lsl_data_stream.push_sample([d.force], timestamp=d.time) # local time, force
 
                 # write to shared memory
-                self._total_sample_cnt.value += n
-                self._dat[:] = data[-1]  # last sample to shared memory
+                self._total_sample_cnt.value += 1
+                self._dat.value = d.force  # last sample to shared memory
 
                 # file writer
                 if self.is_saving():
-                    if self.cfg.add_local_time:
-                        t_col = np.full((data.shape[0], 1), t - start_time) # ms
-                        data = np.hstack((t_col, data))
-                    self._file_writer_queue.put(data)
-                    self._saved_sample_cnt.value += n
+                    self._file_writer_queue.put(d)
+                    self._saved_sample_cnt.value += 1
 
                 if not self.flag_sensor_bias_is_determined.is_set():
                     # new baseline requested
