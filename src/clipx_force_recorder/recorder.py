@@ -3,7 +3,7 @@ from time import asctime, localtime, time
 import PySimpleGUI as sg
 import readkeys
 
-from . import APPNAME, __version__
+from . import APPNAME, LOGFILE, __version__
 from .file_writer import FileWriter, unique_file_path
 from .force_sensor_process import SensorProcess
 from .settings import RecordingSettings
@@ -25,7 +25,8 @@ class Recorder:
             self.cfg.lsl_stream = lsl_stream
 
         if self.cfg.save_data:
-            self.file_writer = FileWriter(filename,
+            data_path = self.cfg.absolute_path_data(self.cfg.file_path.parent)
+            self.file_writer = FileWriter(filepath=data_path / filename,
                                           write_local_time=self.cfg.add_local_time,
                                           append_mode=False)
             self.file_writer.start()
@@ -169,6 +170,7 @@ class RecorderGUI:
 def run(settings_file: str = "clipx_sensor.settings.toml"):
 
     print(f"ClipX Force Recorder {__version__}")
+    print(f"Log file: {LOGFILE}")
     try:
         cfg = RecordingSettings.load(settings_file)
     except FileNotFoundError:

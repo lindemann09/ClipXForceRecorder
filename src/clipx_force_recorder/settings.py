@@ -1,5 +1,5 @@
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import tomlkit
@@ -15,8 +15,10 @@ class RecordingSettings(object):
     lsl_stream: bool = True
     lsl_stream_name: str = "ClipXForce"
     save_data: bool = True
+    data_folder: str = "data"
     mock_sensor: bool = False
     add_local_time: bool = False
+    file_path: Path = field(default_factory=lambda: Path().parent / "NO_SETTINGS_FILE.TXT")
 
     @property
     def signal_id(self) -> int:
@@ -28,13 +30,15 @@ class RecordingSettings(object):
                 "lsl_stream": self.lsl_stream,
                 "lsl_stream_name": self.lsl_stream_name,
                 "save_data": self.save_data,
+                "data_folder": self.data_folder,
                 "mock_sensor": self.mock_sensor,
                 "add_local_time": self.add_local_time}
 
     @staticmethod
-    def load(filename: str| Path):
-        rtn = RecordingSettings()
-        with open(Path(filename), "r", encoding="utf-8") as fl:
+    def load(filepath: str| Path):
+        filepath = Path(filepath)
+        rtn = RecordingSettings(file_path=filepath)
+        with open(filepath, "r", encoding="utf-8") as fl:
             d = tomlkit.load(fl)
         if "ip_address" in d:
             rtn.ip_address = d["ip_address"]
@@ -46,6 +50,8 @@ class RecordingSettings(object):
             rtn.lsl_stream_name = d["lsl_stream_name"]
         if "save_data" in d:
             rtn.save_data = d["save_data"]
+        if "data_folder" in d:
+            rtn.data_folder = d["data_folder"]
         if "mock_sensor" in d:
             rtn.mock_sensor = d["mock_sensor"]
         if "add_local_time" in d:
@@ -55,4 +61,11 @@ class RecordingSettings(object):
     def save(self, filename: str| Path):
         with open(Path(filename), "w", encoding="utf-8") as fl:
             tomlkit.dump(self.asdict(), fl)
+
+    def absolute_path_data(self, working_dir: str | Path) -> Path:
+        fld = Path(self.data_folder)
+        if fld.is_absolute():
+            return fld
+        else:
+            return Path(working_dir).absolute() / fld
 
