@@ -4,8 +4,14 @@ Oliver Lindemann
 """
 
 from ctypes import *
+from dataclasses import dataclass
 
-from .types import ClipXData
+
+@dataclass
+class ClipXData:
+    time: float
+    values: list[float]
+
 
 DLL_PATH = "C:\\Windows\\System\\ClipXApi.dll"
 SIGNAL_LABELS = {

@@ -1,36 +1,48 @@
-import atexit
-import ctypes as ct
-import os
+import math
 from abc import ABC, abstractmethod
 from collections import deque
-from multiprocessing import Event, Process, Queue, Value
+from dataclasses import dataclass
 from time import sleep
-from typing import Optional
 
-import numpy as np
-from numpy.typing import NDArray
+from numpy import mean
 
 from . import api, lsl
 from .settings import RecordingSettings
-from .types import ForceSensorData
 
-EMPTY_ARRAY = np.array([], dtype=np.float64)
 
+@dataclass
+class ForceSensorData:
+    """Data class to hold force data."""
+    force: float
+    time: float
+    clipx_time: float
+    sensor_id: int = 0
+
+    def csv(self,
+            write_local_time: bool,
+            write_device_id: bool=False,
+            float_decimal_places: int= 4) -> str:
+        """converts data to string."""
+
+        float_format = "{0:." + str(float_decimal_places) + "f},"
+        txt = f"{self.clipx_time},"
+        if write_local_time:
+            txt += f"{self.time},"
+        if write_device_id:
+            txt += f"{self.sensor_id},"
+        txt += float_format.format(self.force)
+        return txt[:-1]
 
 class ForceSensor(ABC):
 
-    def __init__(self, rs: RecordingSettings):
+    def __init__(self, rs: RecordingSettings, buffer_size: int):
         self.ip_address = rs.ip_address
         self.signal_id = rs.signal_id
-        self._bias = 0
+        self.bias = 0
+        self._raw_sample_buffer = deque(maxlen=buffer_size)
 
-    @property
-    def bias(self) -> float:
-        return self._bias
-
-    @bias.setter
-    def bias(self, value: float):
-        self._bias = value
+    def determine_bias(self):
+        self.bias = mean(self._raw_sample_buffer)
 
     @abstractmethod
     def start(self):
@@ -41,7 +53,7 @@ class ForceSensor(ABC):
         pass
 
     @abstractmethod
-    def poll(self, n_max_samples:int=1) -> NDArray[np.float64]:
+    def poll(self, n_max_samples:int=1)  -> list[ForceSensorData]:
         """returns last force data.
 
         Entire block of data can be received afterwards via self.last_clipx_data
@@ -53,8 +65,8 @@ class ClipXForceSensor(ForceSensor):
 
     SAMPLINGRATE = 100
 
-    def __init__(self, rs: RecordingSettings):
-        super().__init__(rs)
+    def __init__(self, rs: RecordingSettings, buffer_size: int):
+        super().__init__(rs, buffer_size)
         self.api = api.ClipXAPI()
 
     def start(self):
@@ -75,17 +87,20 @@ class ClipXForceSensor(ForceSensor):
 
         data_clipx = self.api.read_next_block(n_max_samples)
         t = lsl.local_clock()
-        return [ForceSensorData(force=d.values[self.signal_id] - self._bias,
-                          time=t,
-                          clipx_time=d.time)
-                for d in data_clipx]
+        rtn = []
+        for d in data_clipx:
+            f = d.values[self.signal_id]
+            self._raw_sample_buffer.append(f)
+            rtn.append(ForceSensorData(force=f - self.bias,time=t, clipx_time=d.time))
+        return rtn
+
 
 class MockForceSensor(ForceSensor):
 
     SAMPLINGRATE = 100
 
-    def __init__(self, rs: RecordingSettings):
-        super().__init__(rs)
+    def __init__(self, rs: RecordingSettings, buffer_size: int):
+        super().__init__(rs, buffer_size)
 
         print("USING MOCK FORCE SENSOR!")
         self._started = False
@@ -111,137 +126,9 @@ class MockForceSensor(ForceSensor):
         if (t - self._last_sample_time) > 1/self.SAMPLINGRATE: # 1ms
             self._cnt += 1
             x = self._cnt / 100
-            dat = np.array((np.sin(x/2), np.cos(x/5), np.sin(x),
-                               np.sin(x/2), np.cos(x/5), np.sin(x))) * 10
-
+            f = math.sin(x/2) * 10
+            self._raw_sample_buffer.append(f)
             self._last_sample_time = t
-            return [ForceSensorData(force=dat[self.signal_id] - self._bias, time=t, clipx_time=t)]
+            return [ForceSensorData(force=f - self.bias, time=t, clipx_time=t)]
         else:
             return []
-
-
-
-class SensorProcess(Process):
-
-    DETERMINE_BIAS_SAMPLES = 10
-
-
-    def __init__(
-        self,
-        recording_settings: RecordingSettings,
-        file_writer_queue: Optional[Queue]
-    ):
-        """ForceSensorProcess
-        """
-
-        # DOC explain usage
-
-        super().__init__()
-
-        self.cfg = recording_settings
-        self.stream_id = f"cx_{os.getpid()}"
-        self._file_writer_queue = file_writer_queue
-
-        self._dat = Value(ct.c_double, 0)
-        self._saved_sample_cnt = Value(ct.c_int64, 0)
-        self._total_sample_cnt = Value(ct.c_int64, 0)
-        self.flag_sensor_bias_is_determined = Event()
-        self._flag_quit_request = Event()
-        self.__flag_is_saving = Event()
-
-        atexit.register(self.join)
-
-
-    def get_force(self) -> float:
-        return self._dat.value
-
-    def get_saved_sample_cnt(self) -> int:
-        """Return the number of samples that have been written to storage."""
-        return self._saved_sample_cnt.value
-
-    def get_total_sample_cnt(self) -> int:
-        return self._total_sample_cnt.value
-
-    def determine_bias(self):
-        self.flag_sensor_bias_is_determined.clear()
-
-    def start_saving(self):
-        if self._file_writer_queue is not None:
-            self.__flag_is_saving.set()
-
-    def pause_saving(self):
-        self.__flag_is_saving.clear()
-
-    def is_saving(self) -> bool:
-
-        return self._file_writer_queue is not None and self.__flag_is_saving.is_set()
-
-    def quit(self):
-        self._flag_quit_request.set()
-
-    def join(self, timeout=None):
-        self._flag_quit_request.set()
-        super().join(timeout)
-
-
-    def run(self):
-
-        self.__flag_is_saving.clear()
-        self._flag_quit_request.clear()
-        self.flag_sensor_bias_is_determined.clear()
-        fifo = deque(maxlen=SensorProcess.DETERMINE_BIAS_SAMPLES)
-        t = 0.0
-
-        if self.cfg.mock_sensor:
-            sensor = MockForceSensor(self.cfg)
-        else:
-            sensor = ClipXForceSensor(self.cfg)
-
-        ## create init LSL
-        if self.cfg.lsl_stream: # LSL support
-            lsl_data_stream = lsl.init_stream(
-                    name=self.cfg.lsl_stream_name,
-                    content_type="force",
-                    n_channels=1,
-                    stream_id=self.stream_id,
-                    freq=sensor.SAMPLINGRATE,
-                    channel_format=lsl.cf_double64,
-                    metadata={},
-                )
-            print("LSL stream created")
-        else:
-            lsl_data_stream = None
-
-
-        print(f"recording from {sensor.ip_address} \n\n")
-        sensor.start()
-
-        # polling loop
-        while not self._flag_quit_request.is_set():
-
-            data = sensor.poll() # time, force
-            for d in data:
-                fifo.append(d.force) # add all force values to fifo for bias determination
-                ## LSL
-                if lsl_data_stream is not None:
-                    for d in data:
-                        lsl_data_stream.push_sample([d.force], timestamp=d.time) # local time, force
-
-                # write to shared memory
-                self._total_sample_cnt.value += 1
-                self._dat.value = d.force  # last sample to shared memory
-
-                # file writer
-                if self.is_saving():
-                    self._file_writer_queue.put(d)
-                    self._saved_sample_cnt.value += 1
-
-                if not self.flag_sensor_bias_is_determined.is_set():
-                    # new baseline requested
-                    sensor.bias = np.mean(fifo)
-                    self.flag_sensor_bias_is_determined.set()
-
-        # stop process
-        self.pause_saving()
-        sensor.stop()
-

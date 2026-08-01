@@ -3,7 +3,7 @@ from multiprocessing import Event, Process, Queue
 from pathlib import Path
 from queue import Empty
 
-from .types import ForceSensorData
+from .force_sensor import ForceSensorData
 
 NEWLINE = "\n"
 ENCODING = "utf-8"

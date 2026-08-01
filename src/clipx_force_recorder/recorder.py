@@ -5,7 +5,7 @@ import readkeys
 
 from . import APPNAME, __version__
 from .file_writer import FileWriter, unique_file_path
-from .force_sensor import SensorProcess
+from .force_sensor_process import SensorProcess
 from .settings import RecordingSettings
 
 GUI_UPDATE_INTERVAL = 0.3  # seconds
