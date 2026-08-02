@@ -3,11 +3,12 @@ from time import asctime, localtime, time
 import PySimpleGUI as sg
 import readkeys
 
-from . import APPNAME, LOGFILE, __version__
+from .. import APPNAME, __version__
+from ..tools.file_writer import unique_file_path
+from . import LOGFILE
 from .force_sensor import SensorDataWriter
 from .force_sensor_process import SensorProcess
 from .settings import RecordingSettings
-from .tools.file_writer import unique_file_path
 
 GUI_UPDATE_INTERVAL = 0.3  # seconds
 

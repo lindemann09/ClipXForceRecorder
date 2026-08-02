@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-clipx_force_recorder = "clipx_force_recorder.recorder:run"
+clipx_force_recorder = "clipx_force_recorder.app.recorder:run"
 
 [project.urls]
 Documentation = "https://github.com/lindemann09/ClipXForceRecorder"

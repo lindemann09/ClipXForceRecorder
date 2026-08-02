@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
 
+from ..tools import lsl
+from ..tools.data import DataBuffer
+from ..tools.file_writer import AbstractCSVDataStruct, AbstractFileWriter
 from . import api
 from .settings import RecordingSettings
-from .tools import lsl
-from .tools.data import DataBuffer
-from .tools.file_writer import AbstractCSVDataStruct, AbstractFileWriter
 
 
 @dataclass

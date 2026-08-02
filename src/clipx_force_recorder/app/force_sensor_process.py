@@ -4,9 +4,9 @@ import os
 from multiprocessing import Event, Process, Queue, Value
 from typing import Optional
 
+from ..tools import lsl
 from .force_sensor import ClipXForceSensor, MockForceSensor
 from .settings import RecordingSettings
-from .tools import lsl
 
 
 class SensorProcess(Process):
