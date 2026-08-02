@@ -4,11 +4,11 @@ Recording and streaming ClipX Force Sensors with Python and Lab Streaming Layer 
 
 from importlib.metadata import version
 
-from .misc import set_logging as _set_logging
+from .tools import _log
 
 APPNAME = "clipx_force_recorder"
 __version__ = version(APPNAME)
 __author__ = "Oliver Lindemann"
 
-LOGFILE = _set_logging(log_file=f"{APPNAME}.log") # TODO: logging
+LOGFILE = _log.set_logging(log_file=f"{APPNAME}.log")
 

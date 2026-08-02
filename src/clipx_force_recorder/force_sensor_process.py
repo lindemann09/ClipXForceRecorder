@@ -4,9 +4,9 @@ import os
 from multiprocessing import Event, Process, Queue, Value
 from typing import Optional
 
-from . import lsl
 from .force_sensor import ClipXForceSensor, MockForceSensor
 from .settings import RecordingSettings
+from .tools import lsl
 
 
 class SensorProcess(Process):
@@ -39,10 +39,12 @@ class SensorProcess(Process):
 
 
     def get_force(self) -> float:
-        return self._dat.value
+        with self._dat.get_lock():
+            return self._dat.value
 
     def get_total_sample_cnt(self) -> int:
-        return self._total_sample_cnt.value
+        with self._total_sample_cnt.get_lock():
+            return self._total_sample_cnt.value
 
     def determine_bias(self):
         self.flag_sensor_bias_is_determined.clear()
@@ -55,7 +57,6 @@ class SensorProcess(Process):
         self.__flag_is_saving.clear()
 
     def is_saving(self) -> bool:
-
         return self._file_writer_queue is not None and self.__flag_is_saving.is_set()
 
     def quit(self):
@@ -108,8 +109,10 @@ class SensorProcess(Process):
                         lsl_data_stream.push_sample([d.force], timestamp=d.time) # local time, force
 
                 # write to shared memory
-                self._total_sample_cnt.value += 1
-                self._dat.value = d.force  # last sample to shared memory
+                with self._total_sample_cnt.get_lock():
+                    self._total_sample_cnt.value += 1
+                with self._dat.get_lock():
+                    self._dat.value = d.force  # last sample to shared memory
 
                 # file writer
                 if self.is_saving() and self._file_writer_queue is not None:

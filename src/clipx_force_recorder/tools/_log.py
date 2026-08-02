@@ -1,3 +1,4 @@
+
 import logging
 from pathlib import Path
 
@@ -14,5 +15,3 @@ def set_logging(log_file):
                         datefmt="%m%d %H:%M:%S",
                         level=logging.INFO)
     return log_file
-
-

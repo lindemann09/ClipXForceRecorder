@@ -8,7 +8,7 @@ from .api import get_signal_id
 
 
 @dataclass
-class RecordingSettings(object):
+class RecordingSettings:
 
     ip_address: str = '10.144.71.141'
     signal_label: str  = "Field Value"

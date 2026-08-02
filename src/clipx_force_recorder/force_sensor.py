@@ -1,13 +1,14 @@
 import math
 from abc import ABC, abstractmethod
-from collections import deque
 from dataclasses import dataclass
 from time import sleep
 
 from numpy import mean
 
-from . import api, lsl
+from . import api
 from .settings import RecordingSettings
+from .tools import lsl
+from .tools.data import DataBuffer
 
 
 @dataclass
@@ -39,10 +40,10 @@ class ForceSensor(ABC):
         self.ip_address = rs.ip_address
         self.signal_id = rs.signal_id
         self.bias = 0
-        self._raw_sample_buffer = deque(maxlen=buffer_size)
+        self._raw_sample_buffer = DataBuffer(maxlen=buffer_size)
 
     def determine_bias(self):
-        self.bias = mean(self._raw_sample_buffer)
+        self.bias = self._raw_sample_buffer.buffer_mean()[0]
 
     @abstractmethod
     def start(self):
@@ -91,7 +92,7 @@ class ClipXForceSensor(ForceSensor):
         for d in data_clipx:
             f = d.values[self.signal_id]
             self._raw_sample_buffer.append(f)
-            rtn.append(ForceSensorData(force=f - self.bias,time=t, clipx_time=d.time))
+            rtn.append(ForceSensorData(force= f - self.bias, time=t, clipx_time=d.time))
         return rtn
 
 

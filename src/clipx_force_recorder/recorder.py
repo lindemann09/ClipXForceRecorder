@@ -134,11 +134,11 @@ class RecorderGUI:
     def set_recording_status(self, is_recording: bool):
 
         if is_recording:
-            self.window["StartStop"].update(
+            self.window["StartStop"].update( # type: ignore
                 text="Stop", button_color=("black", "orange"), disabled=False)
             self.update(infodata=f"Recording from {self.ip_address}")
         else:
-            self.window["StartStop"].update(
+            self.window["StartStop"].update( # type: ignore
                 text="Start Recording", button_color=("black", "lightgreen"), disabled=False)
             self.make_filename_unique()
             self.update(infodata="Recording Stopped")
