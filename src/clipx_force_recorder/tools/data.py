@@ -3,7 +3,7 @@ from pathlib import Path
 from time import perf_counter
 
 import numpy as np
-from numpy.typing import NDAarry
+from numpy.typing import NDArray
 
 
 def N2g(N):
