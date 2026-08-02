@@ -1,3 +1,4 @@
+from copy import copy
 from collections import deque
 from pathlib import Path
 from time import perf_counter
@@ -113,7 +114,7 @@ class Thresholds:
 
     def __init__(self, thresholds: list[float]):
         """Thresholds for a one channels of data"""
-        self.thresholds = list(thresholds)
+        self.thresholds = copy(thresholds)
         self.thresholds.sort()
         self._curr_level = None
 
@@ -134,7 +135,7 @@ class Thresholds:
     def reset(self, new_thresholds: list[float] | None = None):
         self._curr_level = None
         if new_thresholds is not None:
-            self.thresholds = list(new_thresholds)
+            self.thresholds = copy(new_thresholds)
             self.thresholds.sort()
 
     def has_level(self) -> bool:
