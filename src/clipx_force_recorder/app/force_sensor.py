@@ -26,7 +26,7 @@ class ForceSensor(ABC):
         self.ip_address = rs.ip_address
         self.signal_id = rs.signal_id
         self.bias = 0
-        self._raw_sample_buffer = DataBuffer(maxlen=buffer_size)
+        self._raw_sample_buffer = DataBuffer(maxlen=buffer_size) #FIXME rename Buffer to History, also clipx force recorder
 
     def determine_bias(self):
         self.bias = self._raw_sample_buffer.buffer_mean()[0]
