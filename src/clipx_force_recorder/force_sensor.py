@@ -1,38 +1,24 @@
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from time import sleep
-
-from numpy import mean
 
 from . import api
 from .settings import RecordingSettings
 from .tools import lsl
 from .tools.data import DataBuffer
+from .tools.file_writer import AbstractCSVDataStruct, AbstractFileWriter
 
 
 @dataclass
-class ForceSensorData:
+class ForceSensorData(AbstractCSVDataStruct):
     """Data class to hold force data."""
     force: float
     time: float
     clipx_time: float
     sensor_id: int = 0
 
-    def csv(self,
-            write_local_time: bool,
-            write_device_id: bool=False,
-            float_decimal_places: int= 4) -> str:
-        """converts data to string."""
-
-        float_format = "{0:." + str(float_decimal_places) + "f},"
-        txt = f"{self.clipx_time},"
-        if write_local_time:
-            txt += f"{self.time},"
-        if write_device_id:
-            txt += f"{self.sensor_id},"
-        txt += float_format.format(self.force)
-        return txt[:-1]
 
 class ForceSensor(ABC):
 
@@ -133,3 +119,33 @@ class MockForceSensor(ForceSensor):
             return [ForceSensorData(force=f - self.bias, time=t, clipx_time=t)]
         else:
             return []
+
+
+class SensorDataWriter(AbstractFileWriter):
+
+    def __init__(
+        self,
+        filepath: Path|str,
+        write_local_time: bool,
+        append_mode: bool = False,
+        write_deviceid: bool = False,
+        float_decimal_places: int = 6):
+
+        super().__init__(filepath, append_mode)
+
+        self._write_local_time = write_local_time
+        self._write_deviceid = write_deviceid
+        self._decimal_places = float_decimal_places
+
+
+    def to_csv(self, data: ForceSensorData) -> str:
+        """converts data to string."""
+
+        float_format = "{0:." + str(self._decimal_places) + "f},"
+        txt = f"{data.clipx_time},"
+        if self._write_local_time:
+            txt += f"{data.time},"
+        if self._write_deviceid:
+            txt += f"{data.sensor_id},"
+        txt += float_format.format(data.force)
+        return txt[:-1]

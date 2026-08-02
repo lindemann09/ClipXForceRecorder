@@ -4,9 +4,10 @@ import PySimpleGUI as sg
 import readkeys
 
 from . import APPNAME, LOGFILE, __version__
-from .file_writer import FileWriter, unique_file_path
+from .force_sensor import SensorDataWriter
 from .force_sensor_process import SensorProcess
 from .settings import RecordingSettings
+from .tools.file_writer import unique_file_path
 
 GUI_UPDATE_INTERVAL = 0.3  # seconds
 
@@ -26,8 +27,10 @@ class Recorder:
 
         if self.cfg.save_data:
             data_path = self.cfg.absolute_path_data(self.cfg.file_path.parent)
-            self.file_writer = FileWriter(filepath=data_path / filename,
+            self.file_writer = SensorDataWriter(filepath=data_path / filename,
                                           write_local_time=self.cfg.add_local_time,
+                                          write_deviceid=False,
+                                          float_decimal_places=6,
                                           append_mode=False)
             self.file_writer.start()
             self.file_writer.queue.put(self.cfg.asdict())
@@ -46,7 +49,7 @@ class Recorder:
         self.sensor.start()
         self.sensor.flag_sensor_bias_is_determined.wait()  # Wait until the sensor bias is determined
 
-        if isinstance(self.file_writer, FileWriter):
+        if isinstance(self.file_writer, SensorDataWriter):
             self.sensor.start_saving()
 
     def quit(self):
@@ -56,7 +59,7 @@ class Recorder:
             self.sensor.join()
             self.sensor = None
 
-        if isinstance(self.file_writer, FileWriter):
+        if isinstance(self.file_writer, SensorDataWriter):
             self.file_writer.close_file()
             self.file_writer.join()
             self.file_writer = None
