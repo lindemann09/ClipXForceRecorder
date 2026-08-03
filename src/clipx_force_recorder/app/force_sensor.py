@@ -22,14 +22,14 @@ class ForceSensorData(AbstractCSVDataStruct):
 
 class ForceSensor(ABC):
 
-    def __init__(self, rs: RecordingSettings, buffer_size: int):
+    def __init__(self, rs: RecordingSettings, history_size: int):
         self.ip_address = rs.ip_address
         self.signal_id = rs.signal_id
         self.bias = 0
-        self._raw_sample_buffer = DataBuffer(maxlen=buffer_size) #FIXME rename Buffer to History, also clipx force recorder
+        self._raw_sample_history = DataBuffer(maxlen=history_size)
 
     def determine_bias(self):
-        self.bias = self._raw_sample_buffer.buffer_mean()[0]
+        self.bias = self._raw_sample_history.buffer_mean()[0]
 
     @abstractmethod
     def start(self):
@@ -52,8 +52,8 @@ class ClipXForceSensor(ForceSensor):
 
     SAMPLINGRATE = 100
 
-    def __init__(self, rs: RecordingSettings, buffer_size: int):
-        super().__init__(rs, buffer_size)
+    def __init__(self, rs: RecordingSettings, history_size: int):
+        super().__init__(rs, history_size)
         self.api = api.ClipXAPI()
 
     def start(self):
@@ -77,7 +77,7 @@ class ClipXForceSensor(ForceSensor):
         rtn = []
         for d in data_clipx:
             f = d.values[self.signal_id]
-            self._raw_sample_buffer.append(f)
+            self._raw_sample_history.append(f)
             rtn.append(ForceSensorData(force= f - self.bias, time=t, clipx_time=d.time))
         return rtn
 
@@ -86,8 +86,8 @@ class MockForceSensor(ForceSensor):
 
     SAMPLINGRATE = 100
 
-    def __init__(self, rs: RecordingSettings, buffer_size: int):
-        super().__init__(rs, buffer_size)
+    def __init__(self, rs: RecordingSettings, history_size: int):
+        super().__init__(rs, history_size)
 
         print("USING MOCK FORCE SENSOR!")
         self._started = False
@@ -114,7 +114,7 @@ class MockForceSensor(ForceSensor):
             self._cnt += 1
             x = self._cnt / 100
             f = math.sin(x/2) * 10
-            self._raw_sample_buffer.append(f)
+            self._raw_sample_history.append(f)
             self._last_sample_time = t
             return [ForceSensorData(force=f - self.bias, time=t, clipx_time=t)]
         else:

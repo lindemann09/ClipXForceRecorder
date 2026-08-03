@@ -1,3 +1,4 @@
+from pathlib import Path
 from time import asctime, localtime, time
 
 import PySimpleGUI as sg
@@ -15,10 +16,11 @@ GUI_UPDATE_INTERVAL = 0.3  # seconds
 class Recorder:
     """Sensor and a file writer to record data from the ClipX Force Sensor."""
 
-    def __init__(self, cfg: RecordingSettings):
+    def __init__(self, cfg: RecordingSettings, mock_sensor: bool = False):
         self.cfg = cfg
         self.file_writer = None
         self.sensor = None
+        self.mock_sensor = mock_sensor
 
     def start(self, filename: str = "", lsl_stream: bool | None=None):
 
@@ -42,10 +44,12 @@ class Recorder:
                 txt += "local_time,"
             txt += "force\n"
             self.file_writer.queue.put(txt)
-            self.sensor = SensorProcess(self.cfg, self.file_writer.queue)
+            self.sensor = SensorProcess(self.cfg, self.file_writer.queue,
+                                        mock_sensor=self.mock_sensor)
         else:
             self.file_writer = None
-            self.sensor = SensorProcess(self.cfg, None)
+            self.sensor = SensorProcess(self.cfg, None,
+                                        mock_sensor=self.mock_sensor)
 
         self.sensor.start()
         self.sensor.flag_sensor_bias_is_determined.wait()  # Wait until the sensor bias is determined
@@ -171,7 +175,7 @@ class RecorderGUI:
         self.window["datafilename"].update(flname)  # type: ignore
 
 
-def run(settings_file: str = "clipx_sensor.settings.toml"):
+def run(settings_file: str = "clipx_sensor.settings.toml", mock_sensor: bool = False):
 
     print(f"ClipX Force Recorder {__version__}")
     print(f"Log file: {LOGFILE}")
@@ -182,14 +186,15 @@ def run(settings_file: str = "clipx_sensor.settings.toml"):
             f"\nCannot load settings file. Create a default settings file: {settings_file}"
             "\nPlease RESTART the program after editing the settings file."
         )
-        RecordingSettings().save(settings_file)
+        cfg = RecordingSettings(file_path=Path(settings_file))
+        cfg.save()
         exit()
 
-    recorder = Recorder(cfg)
+    recorder = Recorder(cfg, mock_sensor=mock_sensor)
     gui = RecorderGUI(cfg)
 
     cfg_info = str(cfg.asdict())[1:-1].replace(", ", "\n")
-    if cfg.mock_sensor:
+    if mock_sensor:
         cfg_info += "\n\nUSING MOCK FORCE SENSOR!"
     print(cfg_info)
 

@@ -16,7 +16,8 @@ class SensorProcess(Process):
     def __init__(
         self,
         recording_settings: RecordingSettings,
-        file_writer_queue: Optional[Queue]
+        file_writer_queue: Optional[Queue],
+        mock_sensor: bool
     ):
         """ForceSensorProcess
         """
@@ -27,6 +28,7 @@ class SensorProcess(Process):
 
         self.cfg = recording_settings
         self.stream_id = f"cx_{os.getpid()}"
+        self.mock_sensor = mock_sensor
         self._file_writer_queue = file_writer_queue
 
         self._dat = Value(ct.c_double, 0)
@@ -72,12 +74,12 @@ class SensorProcess(Process):
         self.__flag_is_saving.clear()
         self._flag_quit_request.clear()
         self.flag_sensor_bias_is_determined.clear()
-        if self.cfg.mock_sensor:
+        if self.mock_sensor:
             sensor = MockForceSensor(self.cfg,
-                                     buffer_size=SensorProcess.DETERMINE_BIAS_SAMPLES)
+                                     history_size=SensorProcess.DETERMINE_BIAS_SAMPLES)
         else:
             sensor = ClipXForceSensor(self.cfg,
-                                     buffer_size=SensorProcess.DETERMINE_BIAS_SAMPLES)
+                                     history_size=SensorProcess.DETERMINE_BIAS_SAMPLES)
 
         ## create init LSL
         if self.cfg.lsl_stream: # LSL support
