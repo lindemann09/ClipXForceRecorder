@@ -12,6 +12,7 @@ from .force_sensor_process import SensorProcess
 from .settings import RecordingSettings
 
 GUI_UPDATE_INTERVAL = 0.3  # seconds
+SETTINGS_DEFAULT_FILE = "clipx_sensor.settings.toml"
 
 class Recorder:
     """Sensor and a file writer to record data from the ClipX Force Sensor."""
@@ -73,11 +74,14 @@ class Recorder:
         return isinstance(self.sensor, SensorProcess)
 
 class RecorderGUI:
+
     FLOAT_FORMAT = "{0:.4f}"
 
     def __init__(self, cfg: RecordingSettings):
 
         self.ip_address = cfg.ip_address
+        self.data_path = cfg.absolute_path_data(cfg.file_path.parent)
+
         fr_settings = sg.Frame(
             "Settings",
             [
@@ -171,14 +175,12 @@ class RecorderGUI:
 
     def make_filename_unique(self):
         """Generate a unique file path by appending a number if the file already exists."""
-        flname = unique_file_path(self.values["datafilename"])
-        self.window["datafilename"].update(flname)  # type: ignore
+        flname = unique_file_path(self.data_path / self.values["datafilename"])
+        self.window["datafilename"].update(flname.name)  # type: ignore
 
 
-def run(settings_file: str = "clipx_sensor.settings.toml", mock_sensor: bool = False):
+def run(settings_file: Path | str = SETTINGS_DEFAULT_FILE, mock_sensor: bool = False):
 
-    print(f"ClipX Force Recorder {__version__}")
-    print(f"Log file: {LOGFILE}")
     try:
         cfg = RecordingSettings.load(settings_file)
     except FileNotFoundError:

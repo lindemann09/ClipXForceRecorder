@@ -6,11 +6,13 @@ from .app import LOGFILE, recorder
 
 
 def print_info(logfilename:str|None = None):
-    print("+" + "-" * 23 + "+")
-    print(f"| {APPNAME} {__version__}".ljust(24) + "|")
-    print("+" + "-" * 23 + "+")
+    print("+" + "-" * 30 + "+")
+    print(f"| {APPNAME} {__version__}".ljust(31) + "|")
+    print("+" + "-" * 30 + "+")
     if logfilename is not None:
         print(f"Logging to {logfilename}")
+
+
 
 
 def cli():
